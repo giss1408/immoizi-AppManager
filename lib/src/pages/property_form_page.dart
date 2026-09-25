@@ -34,6 +34,9 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       TextEditingController(text: _initial == null ? '' : '${_initial.price}');
   late final _description =
       TextEditingController(text: _initial?.description ?? '');
+  late final _weeklyPrice = TextEditingController(
+      text: _initial?.weeklyPrice == null ? '' : '${_initial!.weeklyPrice}');
+  late RentalType _rentalType = _initial?.rentalType ?? RentalType.longTerm;
   late String? _categoryId = _initialCategoryId();
   late String _status = _initialStatus();
   bool _saving = false;
@@ -64,7 +67,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       _rooms,
       _surface,
       _price,
-      _description
+      _description,
+      _weeklyPrice
     ]) {
       controller.dispose();
     }
@@ -87,6 +91,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       'price': int.parse(_price.text.trim()),
       'description': _description.text.trim(),
       'listingStatus': _status,
+      'rentalType': _rentalType.apiValue,
+      'weeklyPrice': _rentalType == RentalType.shortTerm
+          ? int.tryParse(_weeklyPrice.text.trim())
+          : null,
     };
     try {
       final data = await widget.editContext.client.query(
@@ -195,15 +203,56 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   ),
                 ),
               ]),
+              const SizedBox(height: 16),
+              const Text('Type de location',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              SegmentedButton<RentalType>(
+                segments: const [
+                  ButtonSegment(
+                      value: RentalType.longTerm,
+                      icon: Icon(Icons.calendar_month),
+                      label: Text('Au mois')),
+                  ButtonSegment(
+                      value: RentalType.shortTerm,
+                      icon: Icon(Icons.nights_stay),
+                      label: Text('Courte durée')),
+                ],
+                selected: {_rentalType},
+                onSelectionChanged: (selection) =>
+                    setState(() => _rentalType = selection.first),
+              ),
+              if (_rentalType == RentalType.shortTerm)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
+                  child: MutedText(
+                      'Appartement meublé loué à la nuit ou à la semaine.'),
+                ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _price,
                 keyboardType: TextInputType.number,
                 inputFormatters: digitsOnly,
-                decoration: _decoration('Loyer mensuel', Icons.payments,
+                decoration: _decoration(
+                    _rentalType == RentalType.shortTerm
+                        ? 'Prix par nuit'
+                        : 'Loyer mensuel',
+                    Icons.payments,
                     suffix: 'FCFA'),
                 validator: _number,
               ),
+              if (_rentalType == RentalType.shortTerm) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _weeklyPrice,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: digitsOnly,
+                  decoration: _decoration(
+                      'Prix par semaine (facultatif)', Icons.date_range,
+                      suffix: 'FCFA'),
+                  validator: (value) => _number(value, required: false),
+                ),
+              ],
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _status,

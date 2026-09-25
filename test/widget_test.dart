@@ -67,7 +67,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Immeuble Plateau'), findsOneWidget);
-    expect(find.text('4 500 000 FCFA'), findsOneWidget);
+    expect(find.text('4 500 000 FCFA / mois'), findsOneWidget);
   });
 
   testWidgets('polling reloads the dashboard only when notifications change',

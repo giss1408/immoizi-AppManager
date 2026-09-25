@@ -18,6 +18,8 @@ Map<String, dynamic> _savedProperty(Map<String, dynamic> variables) => {
       'surfaceM2': variables['surfaceM2'],
       'price': variables['price'],
       'listingStatus': (variables['listingStatus'] as String).toUpperCase(),
+      'rentalType': (variables['rentalType'] as String).toUpperCase(),
+      'weeklyPrice': variables['weeklyPrice'],
       'category': {'title': 'Business'},
       'description': variables['description'],
     };
@@ -123,6 +125,8 @@ void main() {
       'price': 980000,
       'description': 'Open space climatisé',
       'listingStatus': 'available',
+      'rentalType': 'long_term',
+      'weeklyPrice': null,
     });
     expect(popped?.id, '42');
     expect(popped?.title, 'Bureaux Plateau');
@@ -151,6 +155,30 @@ void main() {
     expect(variables['categoryId'], '1');
     expect(variables['listingStatus'], 'rented');
     expect(popped?.price, 950000);
+  });
+
+  testWidgets('creates a short-term listing with nightly and weekly prices',
+      (tester) async {
+    await openForm(tester);
+    await fill(tester, 'Titre de l’annonce', 'Studio meublé Zone 4');
+    await fill(tester, 'Quartier', 'Zone 4');
+    await fill(tester, 'Pièces', '1');
+    await tester.tap(find.text('Courte durée'));
+    await tester.pumpAndSettle();
+    expect(find.text('Prix par nuit'), findsOneWidget);
+    await fill(tester, 'Prix par nuit', '30000');
+    await fill(tester, 'Prix par semaine (facultatif)', '180000');
+
+    await tester.ensureVisible(find.text('Créer le bien'));
+    await tester.tap(find.text('Créer le bien'));
+    await tester.pumpAndSettle();
+
+    final variables = requests.single['variables'] as Map<String, dynamic>;
+    expect(variables['rentalType'], 'short_term');
+    expect(variables['price'], 30000);
+    expect(variables['weeklyPrice'], 180000);
+    expect(popped?.isShortTerm, isTrue);
+    expect(popped?.priceLabel, '30\u202f000 FCFA / nuit');
   });
 
   test('listing statuses have French labels', () {

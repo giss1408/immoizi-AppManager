@@ -185,7 +185,15 @@ class PropertyDetails extends StatelessWidget {
             DetailChip(
                 icon: Icons.place,
                 label: '${property.city}, ${property.district}'),
-            DetailChip(icon: Icons.payments, label: '${property.price} FCFA'),
+            DetailChip(icon: Icons.payments, label: property.priceLabel),
+            if (property.weeklyPriceLabel != null)
+              DetailChip(
+                  icon: Icons.date_range, label: property.weeklyPriceLabel!),
+            DetailChip(
+                icon: property.isShortTerm
+                    ? Icons.nights_stay
+                    : Icons.calendar_month,
+                label: property.rentalType.label),
             DetailChip(
                 icon: Icons.meeting_room,
                 label: '${property.rooms} pi\u00e8ces'),

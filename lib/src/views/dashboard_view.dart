@@ -11,12 +11,16 @@ class ManagerDashboardView extends StatelessWidget {
       {required this.editContext,
       this.searchQuery = '',
       this.filters = const PropertyFilters(),
+      this.onRentalTypeChanged,
       super.key});
 
   final ManagerDashboard dashboard;
   final PropertyEditContext editContext;
   final String searchQuery;
   final PropertyFilters filters;
+
+  /// Quick "Toutes / Au mois / Courte durée" filter.
+  final ValueChanged<RentalType?>? onRentalTypeChanged;
 
   Future<void> _addProperty(BuildContext context) async {
     final navigator = Navigator.of(context);
@@ -45,6 +49,12 @@ class ManagerDashboardView extends StatelessWidget {
         SectionHeader('Mes biens',
             count: properties.length,
             subtitle: 'Annonces et biens de votre portefeuille'),
+        if (onRentalTypeChanged != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: RentalTypeChips(
+                value: filters.rentalType, onChanged: onRentalTypeChanged!),
+          ),
         if (editContext.canEdit)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),

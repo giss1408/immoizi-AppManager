@@ -39,6 +39,17 @@ class _ManagerHomePageState extends State<ManagerHomePage>
   int tab = 0;
 
   @override
+  Map<String, Object?> get extraQueryVariables =>
+      {'rentalType': filters.rentalType?.apiValue};
+
+  /// Applies new filters; the rental type is filtered by the backend.
+  void _applyFilters(PropertyFilters next) {
+    final reload = next.rentalType != filters.rentalType;
+    setState(() => filters = next);
+    if (reload) load();
+  }
+
+  @override
   ManagerDashboard parseDashboard(Map<String, dynamic> json) =>
       ManagerDashboard.fromJson(json);
 
@@ -160,6 +171,10 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                             dashboard,
                             searchQuery: searchQuery,
                             filters: filters,
+                            onRentalTypeChanged: (type) => _applyFilters(
+                                type == null
+                                    ? filters.copyWith(clearRentalType: true)
+                                    : filters.copyWith(rentalType: type)),
                             editContext: _editContext,
                           ),
                       ],
@@ -271,6 +286,6 @@ class _ManagerHomePageState extends State<ManagerHomePage>
         subtitle: 'Affinez les biens qui vous intéressent.',
       ),
     );
-    if (result != null && mounted) setState(() => filters = result);
+    if (result != null && mounted) _applyFilters(result);
   }
 }
