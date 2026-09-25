@@ -29,7 +29,8 @@ class InterestRequestTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         isThreeLine: true,
-        trailing: InterestStatusChip(request.status),
+        trailing:
+            InterestStatusChip(request.status, expired: request.isExpired),
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => InterestRequestPage(
                 request: request, editContext: editContext))),

@@ -103,7 +103,9 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
                         ],
                       ),
                     ),
-                    InterestStatusChip(status),
+                    InterestStatusChip(status,
+                        expired: request.isExpired &&
+                            status == widget.request.status),
                   ]),
                   const Divider(height: 28),
                   _Detail(Icons.work_outline, 'Profession', request.profession),
@@ -188,20 +190,21 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
 }
 
 class InterestStatusChip extends StatelessWidget {
-  const InterestStatusChip(this.status, {super.key});
+  const InterestStatusChip(this.status, {this.expired = false, super.key});
 
   final String status;
+  final bool expired;
 
   @override
   Widget build(BuildContext context) {
-    final color = interestStatusColor(status);
+    final color = interestStatusColor(status, expired: expired);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(interestStatusLabel(status),
+      child: Text(interestStatusLabel(status, expired: expired),
           style: TextStyle(
               color: color, fontWeight: FontWeight.w800, fontSize: 12)),
     );

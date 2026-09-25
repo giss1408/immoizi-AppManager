@@ -11,7 +11,7 @@ query ManagerDashboard(\$search: String) {
   rentPayments { lease { property { title } } amount status }
   maintenanceRequests { id property { title } title description priority status }
   notifications { id title message isRead createdAt property { title } interestRequest { id message } }
-  propertyInterestRequests { id property { title } status applicantName profession salaryRange employer occupantsCount leaseStartDate message createdAt }
+  propertyInterestRequests { id property { title } status isExpired applicantName profession salaryRange employer occupantsCount leaseStartDate message createdAt }
 }
 ''';
 

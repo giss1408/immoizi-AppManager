@@ -209,10 +209,8 @@ class _ManagerHomePageState extends State<ManagerHomePage>
           title: "Demandes d'intérêt",
           icon: Icons.forum_outlined,
           count: dashboard.interestRequests.length,
-          initiallyExpanded: dashboard.interestRequests.any((item) => const {
-                'pending',
-                'reviewing'
-              }.contains(item.status.toLowerCase())),
+          initiallyExpanded: dashboard.interestRequests.any((item) =>
+              isOpenInterestStatus(item.status, expired: item.isExpired)),
           children: dashboard.interestRequests
               .map((item) =>
                   InterestRequestTile(item, editContext: _editContext))

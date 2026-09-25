@@ -221,9 +221,13 @@ class InterestRequestItem {
       this.occupantsCount,
       this.leaseStartDate,
       this.message,
-      {this.applicantName = 'Candidat'});
+      {this.applicantName = 'Candidat',
+      this.isExpired = false});
 
   final String applicantName;
+
+  /// Unanswered for more than 6 days: the applicant may apply again.
+  final bool isExpired;
 
   final String id;
   final String propertyTitle;
@@ -247,6 +251,7 @@ class InterestRequestItem {
         json['leaseStartDate'] as String? ?? '-',
         json['message'] as String? ?? '',
         applicantName: json['applicantName'] as String? ?? 'Candidat',
+        isExpired: json['isExpired'] as bool? ?? false,
       );
 }
 
