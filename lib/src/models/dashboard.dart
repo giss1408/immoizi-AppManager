@@ -2,7 +2,11 @@ import 'package:immoizi_core/immoizi_core.dart';
 
 class ManagerDashboard {
   ManagerDashboard(this.properties, this.leases, this.documents, this.payments,
-      this.maintenance, this.notifications, this.interestRequests);
+      this.maintenance, this.notifications, this.interestRequests,
+      {this.categories = const []});
+
+  /// Property categories the landlord can choose from when editing.
+  final List<CategoryOption> categories;
 
   final List<Property> properties;
   final List<LeaseItem> leases;
@@ -29,6 +33,8 @@ class ManagerDashboard {
         jsonItems(json['propertyInterestRequests'])
             .map(InterestRequestItem.fromJson)
             .toList(),
+        categories:
+            jsonItems(json['categories']).map(CategoryOption.fromJson).toList(),
       );
 
   factory ManagerDashboard.demo() => ManagerDashboard(
@@ -262,4 +268,14 @@ String _maintenanceStatus(Object? value) {
         'annulee': 'cancelled',
       }[normalized] ??
       'open';
+}
+
+class CategoryOption {
+  const CategoryOption(this.id, this.title);
+
+  final String id;
+  final String title;
+
+  factory CategoryOption.fromJson(Map<String, dynamic> json) =>
+      CategoryOption('${json['id'] ?? ''}', json['title'] as String? ?? '-');
 }

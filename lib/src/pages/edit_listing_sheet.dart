@@ -4,9 +4,9 @@ import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:immoizi_core/immoizi_core.dart';
 
-import '../api/queries.dart';
 import '../api/rest_client.dart';
 import '../property_edit_context.dart';
+import 'property_form_page.dart';
 
 class EditListingSheet extends StatefulWidget {
   const EditListingSheet(
@@ -20,57 +20,18 @@ class EditListingSheet extends StatefulWidget {
 }
 
 class _EditListingSheetState extends State<EditListingSheet> {
-  late final priceController =
-      TextEditingController(text: widget.property.price.toString());
-  late final descriptionController =
-      TextEditingController(text: widget.property.description);
   late Property current = widget.property;
-  bool savingText = false;
   bool uploadingImage = false;
   bool uploadingVideo = false;
   bool deletingMedia = false;
   String? error;
 
-  @override
-  void dispose() {
-    priceController.dispose();
-    descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveText() async {
-    setState(() {
-      savingText = true;
-      error = null;
-    });
-    try {
-      final price = int.tryParse(priceController.text.trim());
-      final data = await GraphQLClient().query(
-        widget.editContext.endpoint,
-        widget.editContext.token,
-        updatePropertyListingMutation,
-        variables: {
-          'propertyId': current.id,
-          'price': price,
-          'description': descriptionController.text.trim(),
-        },
-      );
-      final updated =
-          data['updatePropertyListing']['property'] as Map<String, dynamic>;
-      setState(() {
-        current = current.copyWith(
-          price: updated['price'] as int?,
-          description: updated['description'] as String?,
-        );
-      });
-    } catch (exception) {
-      if (mounted) {
-        setState(() => error =
-            'Impossible d\u2019enregistrer : ${describeError(exception)}');
-      }
-    } finally {
-      if (mounted) setState(() => savingText = false);
-    }
+  Future<void> _editDetails() async {
+    final updated = await Navigator.of(context).push<Property>(
+        MaterialPageRoute(
+            builder: (_) => PropertyFormPage(
+                property: current, editContext: widget.editContext)));
+    if (updated != null && mounted) setState(() => current = updated);
   }
 
   Future<void> _pickAndUpload({required bool isVideo}) async {
@@ -288,34 +249,24 @@ class _EditListingSheetState extends State<EditListingSheet> {
                     .titleLarge
                     ?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 16),
-            TextField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Prix (FCFA)', prefixIcon: Icon(Icons.payments)),
+            OutlinedButton.icon(
+              onPressed: _editDetails,
+              icon: const Icon(Icons.edit_note),
+              label: const Text('Modifier les informations'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: IvoryColors.green,
+                  side: const BorderSide(color: IvoryColors.green)),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: descriptionController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                  labelText: 'Description',
-                  prefixIcon: Icon(Icons.description)),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: savingText ? null : _saveText,
-              icon: savingText
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.save),
-              label: Text(savingText
-                  ? 'Enregistrement...'
-                  : 'Enregistrer prix & description'),
-            ),
+            const SizedBox(height: 6),
+            const MutedText(
+                'Titre, catégorie, adresse, pièces, surface, loyer, statut et description.'),
             const SizedBox(height: 20),
+            Text('Photos & vidéo',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
             if (_imageCount > 0) ...[
               SizedBox(
                 height: 64,

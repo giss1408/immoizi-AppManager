@@ -3,6 +3,7 @@ import 'package:immoizi_core/immoizi_core.dart';
 
 import '../models/dashboard.dart';
 import '../pages/property_detail_page.dart';
+import '../pages/property_form_page.dart';
 import '../property_edit_context.dart';
 
 class ManagerDashboardView extends StatelessWidget {
@@ -16,6 +17,17 @@ class ManagerDashboardView extends StatelessWidget {
   final PropertyEditContext editContext;
   final String searchQuery;
   final PropertyFilters filters;
+
+  Future<void> _addProperty(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final created = await navigator.push<Property>(MaterialPageRoute(
+        builder: (_) => PropertyFormPage(editContext: editContext)));
+    if (created == null) return;
+    editContext.onUpdated();
+    await navigator.push(MaterialPageRoute(
+        builder: (_) => PropertyDetailPage(
+            property: created, editContext: editContext, openEditor: true)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +45,15 @@ class ManagerDashboardView extends StatelessWidget {
         SectionHeader('Mes biens',
             count: properties.length,
             subtitle: 'Annonces et biens de votre portefeuille'),
+        if (editContext.canEdit)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: FilledButton.icon(
+              onPressed: () => _addProperty(context),
+              icon: const Icon(Icons.add_home_outlined),
+              label: const Text('Ajouter un bien'),
+            ),
+          ),
         GroupedPropertyList(
           properties: properties,
           cardBuilder: (property) =>
@@ -126,7 +147,7 @@ class PropertyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PropertyListingCard(
       property,
-      statusLabel: property.status,
+      statusLabel: listingStatusLabel(property.status),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
             builder: (_) => PropertyDetailPage(

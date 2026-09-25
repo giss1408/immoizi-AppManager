@@ -166,6 +166,8 @@ class _ManagerHomePageState extends State<ManagerHomePage>
         endpoint: endpoint.text.trim(),
         token: token.text.trim(),
         onUpdated: load,
+        categories: dashboard.categories,
+        client: client,
       );
 
   List<Widget> _mySpace() {

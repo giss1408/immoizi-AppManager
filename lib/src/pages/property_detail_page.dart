@@ -6,10 +6,16 @@ import 'edit_listing_sheet.dart';
 
 class PropertyDetailPage extends StatefulWidget {
   const PropertyDetailPage(
-      {required this.property, required this.editContext, super.key});
+      {required this.property,
+      required this.editContext,
+      this.openEditor = false,
+      super.key});
 
   final Property property;
   final PropertyEditContext editContext;
+
+  /// Opens the editor right away, e.g. to add photos to a new listing.
+  final bool openEditor;
 
   @override
   State<PropertyDetailPage> createState() => _PropertyDetailPageState();
@@ -17,6 +23,16 @@ class PropertyDetailPage extends StatefulWidget {
 
 class _PropertyDetailPageState extends State<PropertyDetailPage> {
   late Property current = widget.property;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openEditor) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openEditSheet();
+      });
+    }
+  }
 
   Future<void> _openEditSheet() async {
     final updated = await showModalBottomSheet<Property>(
@@ -68,7 +84,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     ),
                   ),
                   Chip(
-                      label: Text(current.status),
+                      label: Text(listingStatusLabel(current.status)),
                       backgroundColor: IvoryColors.orange.withOpacity(0.15)),
                 ],
               ),
