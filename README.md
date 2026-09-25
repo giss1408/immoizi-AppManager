@@ -31,7 +31,7 @@ Set at build time with `--dart-define`:
 
 | Key | Default | Purpose |
 | --- | --- | --- |
-| `IMMOIZI_ENDPOINT` | `http://127.0.0.1:8000/graphql` | GraphQL endpoint |
+| `IMMOIZI_ENDPOINT` | `https://immoizi-be.onrender.com/graphql` | GraphQL endpoint |
 | `IMMOIZI_DEMO_USERNAME` | empty | Pre-fills the login form (development only) |
 | `IMMOIZI_DEMO_PASSWORD` | empty | Pre-fills the login form (development only) |
 
@@ -41,7 +41,7 @@ flutter run \
   --dart-define=IMMOIZI_DEMO_PASSWORD=...
 ```
 
-On a USB-connected Android phone, `adb reverse tcp:8000 tcp:8000` makes the default `127.0.0.1` endpoint reach the backend on your computer.
+To use a backend running on your computer instead, pass `--dart-define=IMMOIZI_ENDPOINT=http://127.0.0.1:8000/graphql`; on a USB-connected Android phone, `adb reverse tcp:8000 tcp:8000` makes `127.0.0.1` reach it.
 
 ### Session
 

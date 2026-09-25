@@ -100,6 +100,7 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                 : 'Portefeuille bailleur',
             icon: onMySpace ? Icons.person : Icons.business,
             connected: connected,
+            online: online,
             connectedLabel: username.text.trim(),
             loading: loading,
             onRefresh: load,
