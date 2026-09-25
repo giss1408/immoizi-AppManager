@@ -3,18 +3,41 @@ import 'package:immoizi_core/immoizi_core.dart';
 
 import '../api/queries.dart';
 import '../models/dashboard.dart';
+import '../pages/interest_request_page.dart';
 import '../property_edit_context.dart';
+
+/// Marks the notification read and opens the related interest request.
+Future<void> openNotification(
+  BuildContext context,
+  NotificationItem notification, {
+  required InterestRequestItem? request,
+  required PropertyEditContext editContext,
+  required Future<void> Function(String id) markRead,
+}) async {
+  if (!notification.isRead) markRead(notification.id);
+  if (request == null) return;
+  await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) =>
+          InterestRequestPage(request: request, editContext: editContext)));
+}
 
 class NotificationTile extends StatelessWidget {
   const NotificationTile(this.notification,
-      {required this.editContext, super.key});
+      {required this.editContext,
+      required this.markRead,
+      this.request,
+      super.key});
 
   final NotificationItem notification;
   final PropertyEditContext editContext;
+  final Future<void> Function(String id) markRead;
+
+  /// The interest request this notification is about, if any.
+  final InterestRequestItem? request;
 
   Future<void> _delete(BuildContext context) async {
     try {
-      await GraphQLClient().query(
+      await editContext.client.query(
         editContext.endpoint,
         editContext.token,
         deleteNotificationMutation,
@@ -50,6 +73,8 @@ class NotificationTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         isThreeLine: true,
+        onTap: () => openNotification(context, notification,
+            request: request, editContext: editContext, markRead: markRead),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -69,9 +94,11 @@ class NotificationTile extends StatelessWidget {
 }
 
 class UnreadNotificationsBanner extends StatelessWidget {
-  const UnreadNotificationsBanner({required this.notifications, super.key});
+  const UnreadNotificationsBanner(
+      {required this.notifications, this.onTap, super.key});
 
   final List<NotificationItem> notifications;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +116,10 @@ class UnreadNotificationsBanner extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         isThreeLine: true,
+        onTap: onTap,
         trailing: notifications.length > 1
             ? Text('+${notifications.length - 1}')
-            : null,
+            : const Icon(Icons.chevron_right),
       ),
     );
   }

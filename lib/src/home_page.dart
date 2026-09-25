@@ -46,9 +46,13 @@ class _ManagerHomePageState extends State<ManagerHomePage>
   ManagerDashboard demoDashboard() => ManagerDashboard.demo();
 
   @override
-  Iterable<({String id, bool isRead})> notificationKeys(
-          ManagerDashboard dashboard) =>
-      dashboard.notifications.map((item) => (id: item.id, isRead: item.isRead));
+  Iterable<AppNotification> notificationsOf(ManagerDashboard dashboard) =>
+      dashboard.notifications.map((item) => AppNotification(
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          isRead: item.isRead,
+          interestRequestId: item.interestRequestId));
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +142,14 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                             notifications: dashboard.notifications
                                 .where((item) => !item.isRead)
                                 .toList(),
+                            onTap: () {
+                              final first = dashboard.notifications
+                                  .firstWhere((item) => !item.isRead);
+                              openNotification(context, first,
+                                  request: _requestFor(first),
+                                  editContext: _editContext,
+                                  markRead: markNotificationRead);
+                            },
                           ),
                         ],
                         const SizedBox(height: 16),
@@ -160,6 +172,13 @@ class _ManagerHomePageState extends State<ManagerHomePage>
         ],
       ),
     );
+  }
+
+  InterestRequestItem? _requestFor(NotificationItem notification) {
+    for (final request in dashboard.interestRequests) {
+      if (request.id == notification.interestRequestId) return request;
+    }
+    return null;
   }
 
   PropertyEditContext get _editContext => PropertyEditContext(
@@ -185,6 +204,31 @@ class _ManagerHomePageState extends State<ManagerHomePage>
           onLogout: logout,
           loadLabel: 'Charger le portefeuille'),
       MetricGrid(dashboard: dashboard),
+      // Requests and notifications first: they are what needs an answer.
+      CategorySection(
+          title: "Demandes d'intérêt",
+          icon: Icons.forum_outlined,
+          count: dashboard.interestRequests.length,
+          initiallyExpanded: dashboard.interestRequests.any((item) => const {
+                'pending',
+                'reviewing'
+              }.contains(item.status.toLowerCase())),
+          children: dashboard.interestRequests
+              .map((item) =>
+                  InterestRequestTile(item, editContext: _editContext))
+              .toList()),
+      CategorySection(
+          title: 'Notifications',
+          icon: Icons.notifications_none,
+          count: dashboard.notifications.length,
+          initiallyExpanded:
+              dashboard.notifications.any((item) => !item.isRead),
+          children: dashboard.notifications
+              .map((item) => NotificationTile(item,
+                  editContext: _editContext,
+                  markRead: markNotificationRead,
+                  request: _requestFor(item)))
+              .toList()),
       CategorySection(
           title: 'Baux',
           icon: Icons.assignment,
@@ -210,21 +254,6 @@ class _ManagerHomePageState extends State<ManagerHomePage>
           count: dashboard.maintenance.length,
           children: dashboard.maintenance
               .map((item) => MaintenanceTile(item, editContext: _editContext))
-              .toList()),
-      CategorySection(
-          title: 'Notifications',
-          icon: Icons.notifications_none,
-          count: dashboard.notifications.length,
-          children: dashboard.notifications
-              .map((item) => NotificationTile(item, editContext: _editContext))
-              .toList()),
-      CategorySection(
-          title: "Demandes d'intérêt",
-          icon: Icons.forum_outlined,
-          count: dashboard.interestRequests.length,
-          children: dashboard.interestRequests
-              .map((item) => InterestRequestTile(item,
-                  endpoint: endpoint.text.trim(), token: token.text.trim()))
               .toList()),
     ];
   }

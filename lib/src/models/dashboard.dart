@@ -180,7 +180,11 @@ class DocumentItem {
 
 class NotificationItem {
   NotificationItem(this.id, this.title, this.message, this.propertyTitle,
-      this.interestMessage, this.isRead, this.createdAt);
+      this.interestMessage, this.isRead, this.createdAt,
+      {this.interestRequestId});
+
+  /// Set when the notification is about an interest request.
+  final String? interestRequestId;
 
   final String id;
   final String title;
@@ -201,6 +205,8 @@ class NotificationItem {
             '',
         json['isRead'] as bool? ?? false,
         json['createdAt'] as String? ?? '',
+        interestRequestId: (json['interestRequest']
+            as Map<String, dynamic>?)?['id'] as String?,
       );
 }
 
@@ -214,7 +220,10 @@ class InterestRequestItem {
       this.employer,
       this.occupantsCount,
       this.leaseStartDate,
-      this.message);
+      this.message,
+      {this.applicantName = 'Candidat'});
+
+  final String applicantName;
 
   final String id;
   final String propertyTitle;
@@ -237,6 +246,7 @@ class InterestRequestItem {
         jsonInt(json['occupantsCount']),
         json['leaseStartDate'] as String? ?? '-',
         json['message'] as String? ?? '',
+        applicantName: json['applicantName'] as String? ?? 'Candidat',
       );
 }
 

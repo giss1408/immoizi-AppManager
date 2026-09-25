@@ -10,8 +10,8 @@ query ManagerDashboard(\$search: String) {
   propertyDocuments { id property { id title } title documentType visibility file createdAt }
   rentPayments { lease { property { title } } amount status }
   maintenanceRequests { id property { title } title description priority status }
-  notifications { id title message isRead createdAt property { title } interestRequest { message } }
-  propertyInterestRequests { id property { title } status profession salaryRange employer occupantsCount leaseStartDate message }
+  notifications { id title message isRead createdAt property { title } interestRequest { id message } }
+  propertyInterestRequests { id property { title } status applicantName profession salaryRange employer occupantsCount leaseStartDate message createdAt }
 }
 ''';
 
@@ -43,6 +43,14 @@ const updateMaintenanceMutation = r'''
 mutation UpdateMaintenance($id: ID!, $title: String, $description: String, $priority: String, $status: String) {
   updateMaintenanceRequest(id: $id, title: $title, description: $description, priority: $priority, status: $status) {
     maintenanceRequest { id title description priority status }
+  }
+}
+''';
+
+const respondToInterestMutation = r'''
+mutation RespondToInterest($id: ID!, $accept: Boolean!, $message: String) {
+  respondToPropertyInterest(interestRequestId: $id, accept: $accept, message: $message) {
+    interestRequest { id status }
   }
 }
 ''';
