@@ -46,6 +46,7 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
   final token = TextEditingController();
   final username = TextEditingController(text: 'landlord_demo');
   final password = TextEditingController(text: 'DemoPass123!');
+  final propertySearch = TextEditingController();
   final client = GraphQLClient();
   ManagerDashboard dashboard = ManagerDashboard.demo();
   bool loading = false;
@@ -55,6 +56,9 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
   DateTime? lastSynced;
   String? error;
   Timer? notificationTimer;
+  Timer? searchDebounce;
+  String searchQuery = '';
+  PropertyFilters filters = const PropertyFilters();
 
   @override
   void initState() {
@@ -71,6 +75,8 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
     token.dispose();
     username.dispose();
     password.dispose();
+    propertySearch.dispose();
+    searchDebounce?.cancel();
     notificationTimer?.cancel();
     super.dispose();
   }
@@ -86,7 +92,9 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
       setState(() {
         dashboard = ManagerDashboard.fromJson(data);
         hasData = true;
-        lastSynced = cachedAtMs != null ? DateTime.fromMillisecondsSinceEpoch(cachedAtMs) : null;
+        lastSynced = cachedAtMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(cachedAtMs)
+            : null;
       });
     } catch (_) {
       // Corrupt or outdated cache format — ignore and keep the demo fallback.
@@ -109,11 +117,13 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
 
     try {
       final endpointValue = endpoint.text.trim();
-      final newToken = await client.login(endpointValue, username.text.trim(), password.text.trim());
+      final newToken = await client.login(
+          endpointValue, username.text.trim(), password.text.trim());
       token.text = newToken;
       await load();
     } catch (_) {
-      setState(() => error = 'Connexion échouée — vérifiez vos identifiants ou le backend.');
+      setState(() => error =
+          'Connexion échouée — vérifiez vos identifiants ou le backend.');
     } finally {
       if (mounted) {
         setState(() => loggingIn = false);
@@ -127,7 +137,7 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load({String? search}) async {
     setState(() {
       loading = true;
       error = null;
@@ -139,7 +149,13 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
         throw Exception('Endpoint vide');
       }
 
-      final data = await client.query(endpointValue, token.text.trim(), managerQuery);
+      final activeSearch = (search ?? searchQuery).trim();
+      final data = await client.query(
+        endpointValue,
+        token.text.trim(),
+        managerQuery,
+        variables: {'search': activeSearch.isEmpty ? null : activeSearch},
+      );
       setState(() {
         dashboard = ManagerDashboard.fromJson(data);
         connected = token.text.trim().isNotEmpty;
@@ -153,7 +169,8 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
           dashboard = ManagerDashboard.demo();
           error = 'Backend indisponible — portefeuille démonstratif chargé';
         } else {
-          error = 'Synchronisation impossible — dernier portefeuille en cache affiché';
+          error =
+              'Synchronisation impossible — dernier portefeuille en cache affiché';
         }
       });
     } finally {
@@ -161,6 +178,15 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
         setState(() => loading = false);
       }
     }
+  }
+
+  void _searchProperties(String value) {
+    setState(() => searchQuery = value);
+    searchDebounce?.cancel();
+    if (token.text.trim().isEmpty) return;
+    searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) load(search: value);
+    });
   }
 
   @override
@@ -189,22 +215,17 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
                 icon: Icons.business,
                 connected: connected,
                 connectedLabel: username.text.trim(),
+                onOpenMore: _showMoreTools,
+              ),
+              const SizedBox(height: 14),
+              PropertySearchBar(
+                controller: propertySearch,
+                onChanged: _searchProperties,
+                activeFilterCount: filters.activeCount,
+                onOpenFilters: _showFilters,
               ),
               const SizedBox(height: 12),
               CacheStatusBar(lastSynced: lastSynced, loading: loading),
-              const SizedBox(height: 12),
-              ConnectionCard(
-                endpoint: endpoint,
-                token: token,
-                username: username,
-                password: password,
-                loading: loading,
-                loggingIn: loggingIn,
-                connected: connected,
-                onPressed: load,
-                onLogin: login,
-                onLogout: logout,
-              ),
               if (error != null) ...[
                 const SizedBox(height: 12),
                 ErrorCard(error!),
@@ -212,12 +233,16 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
               if (dashboard.notifications.any((item) => !item.isRead)) ...[
                 const SizedBox(height: 12),
                 UnreadNotificationsBanner(
-                  notifications: dashboard.notifications.where((item) => !item.isRead).toList(),
+                  notifications: dashboard.notifications
+                      .where((item) => !item.isRead)
+                      .toList(),
                 ),
               ],
               const SizedBox(height: 18),
               ManagerDashboardView(
                 dashboard,
+                searchQuery: searchQuery,
+                filters: filters,
                 editContext: PropertyEditContext(
                   endpoint: endpoint.text.trim(),
                   token: token.text.trim(),
@@ -230,10 +255,121 @@ class _ManagerHomePageState extends State<ManagerHomePage> {
       ),
     );
   }
+
+  void _showMoreTools() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Espace gestion',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              const Text('Outils et suivi de votre portefeuille.',
+                  style: TextStyle(color: Colors.black54)),
+              const SizedBox(height: 14),
+              ConnectionCard(
+                  endpoint: endpoint,
+                  token: token,
+                  username: username,
+                  password: password,
+                  loading: loading,
+                  loggingIn: loggingIn,
+                  connected: connected,
+                  onPressed: load,
+                  onLogin: login,
+                  onLogout: logout),
+              MetricGrid(dashboard: dashboard),
+              CategorySection(
+                  title: 'Baux',
+                  icon: Icons.assignment,
+                  count: dashboard.leases.length,
+                  children: dashboard.leases.map(LeaseTile.new).toList()),
+              CategorySection(
+                  title: 'Documents',
+                  icon: Icons.description,
+                  count: dashboard.documents.length,
+                  children: [
+                    ...dashboard.documents.map(DocumentTile.new),
+                    ContractUploadCard(
+                        properties: dashboard.properties,
+                        editContext: PropertyEditContext(
+                            endpoint: endpoint.text.trim(),
+                            token: token.text.trim(),
+                            onUpdated: load))
+                  ]),
+              CategorySection(
+                  title: 'Paiements',
+                  icon: Icons.payments,
+                  count: dashboard.payments.length,
+                  children: dashboard.payments.map(PaymentTile.new).toList()),
+              CategorySection(
+                  title: 'Maintenance',
+                  icon: Icons.build,
+                  count: dashboard.maintenance.length,
+                  children: dashboard.maintenance
+                      .map((item) => MaintenanceTile(item,
+                          editContext: PropertyEditContext(
+                              endpoint: endpoint.text.trim(),
+                              token: token.text.trim(),
+                              onUpdated: load)))
+                      .toList()),
+              CategorySection(
+                  title: 'Notifications',
+                  icon: Icons.notifications_none,
+                  count: dashboard.notifications.length,
+                  children: dashboard.notifications
+                      .map((item) => NotificationTile(item,
+                          editContext: PropertyEditContext(
+                              endpoint: endpoint.text.trim(),
+                              token: token.text.trim(),
+                              onUpdated: load)))
+                      .toList()),
+              CategorySection(
+                  title: "Demandes d'intérêt",
+                  icon: Icons.forum_outlined,
+                  count: dashboard.interestRequests.length,
+                  children: dashboard.interestRequests
+                      .map((item) => InterestRequestTile(item,
+                          endpoint: endpoint.text.trim(),
+                          token: token.text.trim()))
+                      .toList()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showFilters() async {
+    final result = await showModalBottomSheet<PropertyFilters>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => PropertyFilterSheet(
+        initial: filters,
+        categories: dashboard.properties
+            .map((property) => property.category)
+            .toSet()
+            .toList()
+          ..sort(),
+      ),
+    );
+    if (result != null && mounted) setState(() => filters = result);
+  }
 }
 
 class PropertyEditContext {
-  const PropertyEditContext({required this.endpoint, required this.token, required this.onUpdated});
+  const PropertyEditContext(
+      {required this.endpoint, required this.token, required this.onUpdated});
 
   final String endpoint;
   final String token;
@@ -248,74 +384,41 @@ class PropertyEditContext {
 }
 
 class ManagerDashboardView extends StatelessWidget {
-  const ManagerDashboardView(this.dashboard, {required this.editContext, super.key});
+  const ManagerDashboardView(this.dashboard,
+      {required this.editContext,
+      this.searchQuery = '',
+      this.filters = const PropertyFilters(),
+      super.key});
 
   final ManagerDashboard dashboard;
   final PropertyEditContext editContext;
+  final String searchQuery;
+  final PropertyFilters filters;
 
   @override
   Widget build(BuildContext context) {
+    final query = searchQuery.trim().toLowerCase();
+    final properties = dashboard.properties.where((property) {
+      final matchesSearch = query.isEmpty ||
+          property.title.toLowerCase().contains(query) ||
+          property.city.toLowerCase().contains(query) ||
+          property.district.toLowerCase().contains(query);
+      return matchesSearch && filters.matches(property);
+    }).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        MetricGrid(dashboard: dashboard),
-        const SizedBox(height: 16),
         CategorySection(
           title: 'Mes biens',
           icon: Icons.apartment,
-          count: dashboard.properties.length,
+          count: properties.length,
           initiallyExpanded: true,
-          children: groupPropertiesByCategory(dashboard.properties)
+          children: groupPropertiesByCategory(properties)
               .entries
-              .map((entry) => PropertyCategoryGroup(category: entry.key, properties: entry.value, editContext: editContext))
-              .toList(),
-        ),
-        CategorySection(
-          title: 'Baux',
-          icon: Icons.assignment,
-          count: dashboard.leases.length,
-          children: dashboard.leases.map(LeaseTile.new).toList(),
-        ),
-        CategorySection(
-          title: 'Documents',
-          icon: Icons.description,
-          count: dashboard.documents.length,
-          initiallyExpanded: true,
-          children: [
-            ...dashboard.documents.map(DocumentTile.new),
-            ContractUploadCard(properties: dashboard.properties, editContext: editContext),
-          ],
-        ),
-        CategorySection(
-          title: 'Paiements',
-          icon: Icons.payments,
-          count: dashboard.payments.length,
-          children: dashboard.payments.map(PaymentTile.new).toList(),
-        ),
-        CategorySection(
-          title: 'Maintenance',
-          icon: Icons.build,
-          count: dashboard.maintenance.length,
-          children: dashboard.maintenance
-              .map((item) => MaintenanceTile(item, editContext: editContext))
-              .toList(),
-        ),
-        CategorySection(
-          title: 'Notifications',
-          icon: Icons.notifications_none,
-          count: dashboard.notifications.where((item) => !item.isRead).length,
-          initiallyExpanded: dashboard.notifications.isNotEmpty,
-            children: dashboard.notifications
-              .map((item) => NotificationTile(item, editContext: editContext))
-              .toList(),
-        ),
-        CategorySection(
-          title: "Demandes d'intérêt",
-          icon: Icons.forum_outlined,
-          count: dashboard.interestRequests.length,
-          initiallyExpanded: dashboard.interestRequests.isNotEmpty,
-          children: dashboard.interestRequests
-              .map((item) => InterestRequestTile(item, endpoint: editContext.endpoint, token: editContext.token))
+              .map((entry) => PropertyCategoryGroup(
+                  category: entry.key,
+                  properties: entry.value,
+                  editContext: editContext))
               .toList(),
         ),
       ],
@@ -323,7 +426,8 @@ class ManagerDashboardView extends StatelessWidget {
   }
 }
 
-Map<String, List<Property>> groupPropertiesByCategory(List<Property> properties) {
+Map<String, List<Property>> groupPropertiesByCategory(
+    List<Property> properties) {
   final grouped = <String, List<Property>>{};
   for (final property in properties) {
     grouped.putIfAbsent(property.category, () => []).add(property);
@@ -336,7 +440,8 @@ class AppTheme {
     return ThemeData(
       colorScheme: ColorScheme.fromSeed(seedColor: seed),
       scaffoldBackgroundColor: background,
-      cardTheme: const CardTheme(elevation: 0, color: Colors.white, margin: EdgeInsets.zero),
+      cardTheme: const CardTheme(
+          elevation: 0, color: Colors.white, margin: EdgeInsets.zero),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
@@ -350,7 +455,8 @@ class AppTheme {
           backgroundColor: IvoryColors.green,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -358,7 +464,8 @@ class AppTheme {
           foregroundColor: IvoryColors.orange,
           side: const BorderSide(color: IvoryColors.orange),
           minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       ),
       useMaterial3: true,
@@ -373,6 +480,7 @@ class AppHeader extends StatelessWidget {
     required this.icon,
     this.connected = false,
     this.connectedLabel = '',
+    this.onOpenMore,
     super.key,
   });
 
@@ -381,58 +489,51 @@ class AppHeader extends StatelessWidget {
   final IconData icon;
   final bool connected;
   final String connectedLabel;
+  final VoidCallback? onOpenMore;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [IvoryColors.green, Color(0xFF00733A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 3))
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.all(Radius.circular(18)),
-                ),
-                child: Icon(icon, color: Colors.white),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+                color: IvoryColors.background,
+                borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: IvoryColors.green),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+                Text(title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w900)),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              ])),
           ConnectionStatusPill(connected: connected, label: connectedLabel),
+          if (onOpenMore != null)
+            IconButton(
+              onPressed: onOpenMore,
+              icon: const Icon(Icons.more_horiz),
+              tooltip: 'Outils et compte',
+            ),
         ],
       ),
     );
@@ -440,7 +541,8 @@ class AppHeader extends StatelessWidget {
 }
 
 class ConnectionStatusPill extends StatelessWidget {
-  const ConnectionStatusPill({required this.connected, required this.label, super.key});
+  const ConnectionStatusPill(
+      {required this.connected, required this.label, super.key});
 
   final bool connected;
   final String label;
@@ -518,7 +620,10 @@ class AppBottomBar extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 connected ? 'Connect\u00e9' : 'Mode d\u00e9mo',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black54),
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black54),
               ),
             ],
           ),
@@ -578,8 +683,14 @@ class AppDrawer extends StatelessWidget {
                     child: Icon(Icons.person, color: Colors.white),
                   ),
                   const SizedBox(height: 10),
-                  Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                  Text(role, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(name,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16)),
+                  Text(role,
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 8),
                   ConnectionStatusPill(connected: connected, label: name),
                 ],
@@ -594,15 +705,23 @@ class AppDrawer extends StatelessWidget {
                     title: const Text('Tableau de bord'),
                     onTap: () => Navigator.of(context).pop(),
                   ),
-                  const DrawerComingSoonTile(icon: Icons.bar_chart, title: 'Rapports & statistiques'),
-                  const DrawerComingSoonTile(icon: Icons.groups_outlined, title: 'Équipe & rôles'),
-                  const DrawerComingSoonTile(icon: Icons.notifications_none, title: 'Notifications'),
-                  const DrawerComingSoonTile(icon: Icons.translate, title: 'Langue (FR / EN)'),
-                  const DrawerComingSoonTile(icon: Icons.support_agent, title: 'Aide & support'),
-                  const DrawerComingSoonTile(icon: Icons.privacy_tip_outlined, title: 'Confidentialité & conditions'),
+                  const DrawerComingSoonTile(
+                      icon: Icons.bar_chart, title: 'Rapports & statistiques'),
+                  const DrawerComingSoonTile(
+                      icon: Icons.groups_outlined, title: 'Équipe & rôles'),
+                  const DrawerComingSoonTile(
+                      icon: Icons.notifications_none, title: 'Notifications'),
+                  const DrawerComingSoonTile(
+                      icon: Icons.translate, title: 'Langue (FR / EN)'),
+                  const DrawerComingSoonTile(
+                      icon: Icons.support_agent, title: 'Aide & support'),
+                  const DrawerComingSoonTile(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Confidentialité & conditions'),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.info_outline, color: IvoryColors.green),
+                    leading: const Icon(Icons.info_outline,
+                        color: IvoryColors.green),
                     title: const Text('À propos'),
                     onTap: () {
                       Navigator.of(context).pop();
@@ -633,7 +752,8 @@ class AppDrawer extends StatelessWidget {
 }
 
 class DrawerComingSoonTile extends StatelessWidget {
-  const DrawerComingSoonTile({required this.icon, required this.title, super.key});
+  const DrawerComingSoonTile(
+      {required this.icon, required this.title, super.key});
 
   final IconData icon;
   final String title;
@@ -650,8 +770,250 @@ class DrawerComingSoonTile extends StatelessWidget {
           color: IvoryColors.orange.withOpacity(0.12),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text('Bientôt', style: TextStyle(fontSize: 11, color: IvoryColors.orange, fontWeight: FontWeight.w700)),
+        child: const Text('Bientôt',
+            style: TextStyle(
+                fontSize: 11,
+                color: IvoryColors.orange,
+                fontWeight: FontWeight.w700)),
       ),
+    );
+  }
+}
+
+class PropertyFilters {
+  const PropertyFilters(
+      {this.location = '',
+      this.priceRange = const RangeValues(0, 5000000),
+      this.minRooms = 0,
+      this.minSurface = 0,
+      this.categories = const {}});
+
+  final String location;
+  final RangeValues priceRange;
+  final int minRooms;
+  final int minSurface;
+  final Set<String> categories;
+
+  int get activeCount =>
+      (location.trim().isNotEmpty ? 1 : 0) +
+      (priceRange.start > 0 ? 1 : 0) +
+      (priceRange.end < 5000000 ? 1 : 0) +
+      (minRooms > 0 ? 1 : 0) +
+      (minSurface > 0 ? 1 : 0) +
+      (categories.isNotEmpty ? 1 : 0);
+
+  bool matches(Property property) {
+    final query = location.trim().toLowerCase();
+    return (query.isEmpty ||
+            property.city.toLowerCase().contains(query) ||
+            property.district.toLowerCase().contains(query)) &&
+        property.price >= priceRange.start &&
+        property.price <= priceRange.end &&
+        property.rooms >= minRooms &&
+        property.surface >= minSurface &&
+        (categories.isEmpty || categories.contains(property.category));
+  }
+}
+
+class PropertyFilterSheet extends StatefulWidget {
+  const PropertyFilterSheet(
+      {required this.initial, required this.categories, super.key});
+  final PropertyFilters initial;
+  final List<String> categories;
+
+  @override
+  State<PropertyFilterSheet> createState() => _PropertyFilterSheetState();
+}
+
+class _PropertyFilterSheetState extends State<PropertyFilterSheet> {
+  late final TextEditingController locationController =
+      TextEditingController(text: widget.initial.location);
+  late RangeValues priceRange = widget.initial.priceRange;
+  late int minRooms = widget.initial.minRooms;
+  late int minSurface = widget.initial.minSurface;
+  late Set<String> categories = {...widget.initial.categories};
+
+  void reset() => setState(() {
+        locationController.clear();
+        priceRange = const RangeValues(0, 5000000);
+        minRooms = 0;
+        minSurface = 0;
+        categories = {};
+      });
+
+  @override
+  void dispose() {
+    locationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+        child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('Filtres',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w900)),
+                TextButton(onPressed: reset, child: const Text('Réinitialiser'))
+              ]),
+              const Text('Affinez les biens qui vous intéressent.',
+                  style: TextStyle(color: Colors.black54)),
+              const SizedBox(height: 20),
+              TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(
+                      labelText: 'Localisation',
+                      hintText: 'Ville ou quartier',
+                      prefixIcon: Icon(Icons.location_on_outlined))),
+              const SizedBox(height: 14),
+              Text(
+                  'Budget mensuel: ${priceRange.start.round()} - ${priceRange.end.round()} FCFA',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              RangeSlider(
+                  values: priceRange,
+                  min: 0,
+                  max: 5000000,
+                  divisions: 100,
+                  activeColor: IvoryColors.orange,
+                  labels: RangeLabels('${priceRange.start.round()}',
+                      '${priceRange.end.round()}'),
+                  onChanged: (value) => setState(() => priceRange = value)),
+              const SizedBox(height: 12),
+              _FilterStepper(
+                  label: 'Pièces minimum',
+                  value: minRooms,
+                  onChanged: (value) => setState(() => minRooms = value)),
+              _FilterStepper(
+                  label: 'Surface minimum',
+                  suffix: ' m²',
+                  value: minSurface,
+                  step: 10,
+                  onChanged: (value) => setState(() => minSurface = value)),
+              if (widget.categories.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text('Types de biens',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: widget.categories.map((category) {
+                    return FilterChip(
+                      label: Text(category),
+                      selected: categories.contains(category),
+                      selectedColor: IvoryColors.orange.withOpacity(.2),
+                      onSelected: (selected) => setState(() {
+                        if (selected) {
+                          categories.add(category);
+                        } else {
+                          categories.remove(category);
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 22),
+              SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                      onPressed: () => Navigator.pop(
+                          context,
+                          PropertyFilters(
+                              location: locationController.text,
+                              priceRange: priceRange,
+                              minRooms: minRooms,
+                              minSurface: minSurface,
+                              categories: categories)),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Appliquer les filtres'))),
+            ])));
+  }
+}
+
+class _FilterStepper extends StatelessWidget {
+  const _FilterStepper(
+      {required this.label,
+      required this.value,
+      required this.onChanged,
+      this.step = 1,
+      this.suffix = ''});
+  final String label, suffix;
+  final int value, step;
+  final ValueChanged<int> onChanged;
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(child: Text('$label: $value$suffix')),
+        IconButton(
+            onPressed: value > 0 ? () => onChanged(value - step) : null,
+            icon: const Icon(Icons.remove_circle_outline)),
+        Text('$value'),
+        IconButton(
+            onPressed: () => onChanged(value + step),
+            icon: const Icon(Icons.add_circle_outline))
+      ]);
+}
+
+class PropertySearchBar extends StatelessWidget {
+  const PropertySearchBar(
+      {required this.controller,
+      required this.onChanged,
+      required this.onOpenFilters,
+      this.activeFilterCount = 0,
+      super.key});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onOpenFilters;
+  final int activeFilterCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            decoration: InputDecoration(
+              hintText: 'Rechercher une annonce...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        controller.clear();
+                        onChanged('');
+                      },
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(32),
+                  borderSide: BorderSide.none),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        DecoratedBox(
+          decoration: BoxDecoration(
+              color: IvoryColors.orange,
+              borderRadius: BorderRadius.circular(32)),
+          child: IconButton(
+              onPressed: onOpenFilters,
+              icon: Badge(
+                  isLabelVisible: activeFilterCount > 0,
+                  label: Text('$activeFilterCount'),
+                  child: const Icon(Icons.tune, color: Colors.white))),
+        ),
+      ],
     );
   }
 }
@@ -711,17 +1073,25 @@ class _ConnectionCardState extends State<ConnectionCard> {
               child: Row(
                 children: [
                   Icon(
-                    widget.connected ? Icons.check_circle : Icons.wifi_tethering,
-                    color: widget.connected ? IvoryColors.green : IvoryColors.orange,
+                    widget.connected
+                        ? Icons.check_circle
+                        : Icons.wifi_tethering,
+                    color: widget.connected
+                        ? IvoryColors.green
+                        : IvoryColors.orange,
                     size: 20,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      widget.connected ? 'Connect\u00e9 en tant que ${widget.username.text.trim()}' : 'Connexion au backend',
+                      widget.connected
+                          ? 'Connect\u00e9 en tant que ${widget.username.text.trim()}'
+                          : 'Connexion au backend',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: widget.connected ? IvoryColors.green : Colors.black87,
+                        color: widget.connected
+                            ? IvoryColors.green
+                            : Colors.black87,
                       ),
                     ),
                   ),
@@ -731,7 +1101,8 @@ class _ConnectionCardState extends State<ConnectionCard> {
                       icon: const Icon(Icons.logout, size: 16),
                       label: const Text('D\u00e9connexion'),
                     ),
-                  Icon(expanded ? Icons.expand_less : Icons.expand_more, color: Colors.black45),
+                  Icon(expanded ? Icons.expand_less : Icons.expand_more,
+                      color: Colors.black45),
                 ],
               ),
             ),
@@ -785,7 +1156,11 @@ class _ConnectionCardState extends State<ConnectionCard> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.login),
-                    label: Text(widget.loggingIn ? 'Connexion...' : (widget.connected ? 'Se reconnecter' : 'Se connecter')),
+                    label: Text(widget.loggingIn
+                        ? 'Connexion...'
+                        : (widget.connected
+                            ? 'Se reconnecter'
+                            : 'Se connecter')),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -806,7 +1181,9 @@ class _ConnectionCardState extends State<ConnectionCard> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.refresh),
-                    label: Text(widget.loading ? 'Chargement...' : 'Charger le portefeuille'),
+                    label: Text(widget.loading
+                        ? 'Chargement...'
+                        : 'Charger le portefeuille'),
                   ),
                 ],
               ),
@@ -872,7 +1249,8 @@ class MetricCard extends StatelessWidget {
               color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+            child: Icon(icon,
+                size: 18, color: Theme.of(context).colorScheme.primary),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -880,8 +1258,12 @@ class MetricCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$value', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                Text(label, style: const TextStyle(fontSize: 11, color: Colors.black54), overflow: TextOverflow.ellipsis),
+                Text('$value',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.w900)),
+                Text(label,
+                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -927,11 +1309,15 @@ class CategorySection extends StatelessWidget {
               ),
               child: Icon(icon, color: Theme.of(context).colorScheme.primary),
             ),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            title: Text(title,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Chip(label: Text('$count'), visualDensity: VisualDensity.compact),
+                Chip(
+                    label: Text('$count'),
+                    visualDensity: VisualDensity.compact),
                 const Icon(Icons.expand_more),
               ],
             ),
@@ -975,14 +1361,22 @@ class PropertyCategoryGroup extends StatelessWidget {
           initiallyExpanded: true,
           title: Row(
             children: [
-              Icon(Icons.label, size: 16, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.label,
+                  size: 16, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 6),
-              Text(category, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(category,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14)),
               const SizedBox(width: 8),
-              Chip(label: Text('${properties.length}'), visualDensity: VisualDensity.compact),
+              Chip(
+                  label: Text('${properties.length}'),
+                  visualDensity: VisualDensity.compact),
             ],
           ),
-          children: properties.map((property) => PropertyCard(property, editContext: editContext)).toList(),
+          children: properties
+              .map((property) =>
+                  PropertyCard(property, editContext: editContext))
+              .toList(),
         ),
       ),
     );
@@ -1002,63 +1396,103 @@ class PropertyCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PropertyDetailPage(property: property, editContext: editContext)),
+          MaterialPageRoute(
+              builder: (_) => PropertyDetailPage(
+                  property: property, editContext: editContext)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFF0E0), Color(0xFFFFD9B3)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.home_work, color: IvoryColors.orange),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(property.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text('${property.city} \u2022 ${property.district}', style: const TextStyle(color: Colors.black54)),
-                    const SizedBox(height: 4),
-                    Text('${property.rooms} pi\u00e8ces \u2022 ${property.surface} m\u00b2', style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                    if (property.isTestData) ...[
-                      const SizedBox(height: 6),
-                      const TestDataBadge(),
-                    ],
-                  ],
-                ),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          children: [
+            if (property.mainImageUrl != null)
+              Image.network(
+                property.mainImageUrl!,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const _PropertyImageFallback(),
+              )
+            else
+              const _PropertyImageFallback(),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
-                  Text('${property.price} FCFA', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 6),
-                  Text(property.status, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-                  const SizedBox(height: 6),
-                  const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black45),
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFF0E0), Color(0xFFFFD9B3)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child:
+                        const Icon(Icons.home_work, color: IvoryColors.orange),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(property.title,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text('${property.city} \u2022 ${property.district}',
+                            style: const TextStyle(color: Colors.black54)),
+                        const SizedBox(height: 4),
+                        Text(
+                            '${property.rooms} pi\u00e8ces \u2022 ${property.surface} m\u00b2',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.black54)),
+                        if (property.isTestData) ...[
+                          const SizedBox(height: 6),
+                          const TestDataBadge(),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('${property.price} FCFA',
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      Text(property.status,
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.black54)),
+                      const SizedBox(height: 6),
+                      const Icon(Icons.arrow_forward_ios,
+                          size: 14, color: Colors.black45),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+class _PropertyImageFallback extends StatelessWidget {
+  const _PropertyImageFallback();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 150,
+        color: const Color(0xFFFFF0E0),
+        child: const Center(
+            child: Icon(Icons.home_work, size: 48, color: IvoryColors.orange)),
+      );
+}
+
 class PropertyDetailPage extends StatefulWidget {
-  const PropertyDetailPage({required this.property, required this.editContext, super.key});
+  const PropertyDetailPage(
+      {required this.property, required this.editContext, super.key});
 
   final Property property;
   final PropertyEditContext editContext;
@@ -1074,8 +1508,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     final updated = await showModalBottomSheet<Property>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => EditListingSheet(property: current, editContext: widget.editContext),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) =>
+          EditListingSheet(property: current, editContext: widget.editContext),
     );
     if (updated != null && mounted) {
       setState(() => current = updated);
@@ -1111,10 +1547,15 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   Expanded(
                     child: Text(
                       current.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                   ),
-                  Chip(label: Text(current.status), backgroundColor: IvoryColors.orange.withOpacity(0.15)),
+                  Chip(
+                      label: Text(current.status),
+                      backgroundColor: IvoryColors.orange.withOpacity(0.15)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1136,7 +1577,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 }
 
 class EditListingSheet extends StatefulWidget {
-  const EditListingSheet({required this.property, required this.editContext, super.key});
+  const EditListingSheet(
+      {required this.property, required this.editContext, super.key});
 
   final Property property;
   final PropertyEditContext editContext;
@@ -1146,8 +1588,10 @@ class EditListingSheet extends StatefulWidget {
 }
 
 class _EditListingSheetState extends State<EditListingSheet> {
-  late final priceController = TextEditingController(text: widget.property.price.toString());
-  late final descriptionController = TextEditingController(text: widget.property.description);
+  late final priceController =
+      TextEditingController(text: widget.property.price.toString());
+  late final descriptionController =
+      TextEditingController(text: widget.property.description);
   late Property current = widget.property;
   bool savingText = false;
   bool uploadingImage = false;
@@ -1179,7 +1623,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
           'description': descriptionController.text.trim(),
         },
       );
-      final updated = data['updatePropertyListing']['property'] as Map<String, dynamic>;
+      final updated =
+          data['updatePropertyListing']['property'] as Map<String, dynamic>;
       setState(() {
         current = current.copyWith(
           price: updated['price'] as int?,
@@ -1187,7 +1632,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
         );
       });
     } catch (_) {
-      setState(() => error = 'Impossible d\u2019enregistrer \u2014 v\u00e9rifiez votre connexion.');
+      setState(() => error =
+          'Impossible d\u2019enregistrer \u2014 v\u00e9rifiez votre connexion.');
     } finally {
       if (mounted) setState(() => savingText = false);
     }
@@ -1195,7 +1641,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
 
   Future<void> _pickAndUpload({required bool isVideo}) async {
     if (current.id == null || widget.editContext.token.isEmpty) {
-      setState(() => error = 'Mode démo : connectez-vous comme bailleur et synchronisez une annonce réelle avant de téléverser des médias.');
+      setState(() => error =
+          'Mode démo : connectez-vous comme bailleur et synchronisez une annonce réelle avant de téléverser des médias.');
       return;
     }
 
@@ -1203,7 +1650,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
     if (!isVideo) {
       slot = _nextImageSlot();
       if (slot == null) {
-        setState(() => error = 'Maximum de 5 photos atteint pour cette annonce.');
+        setState(
+            () => error = 'Maximum de 5 photos atteint pour cette annonce.');
         return;
       }
     }
@@ -1221,10 +1669,12 @@ class _EditListingSheetState extends State<EditListingSheet> {
       final picker = ImagePicker();
       final file = isVideo
           ? await picker.pickVideo(source: ImageSource.gallery)
-          : await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+          : await picker.pickImage(
+              source: ImageSource.gallery, imageQuality: 85);
       if (file == null) return;
 
-      final uri = Uri.parse('${widget.editContext.mediaEndpoint}/api/properties/${current.id}/media');
+      final uri = Uri.parse(
+          '${widget.editContext.mediaEndpoint}/api/properties/${current.id}/media');
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer ${widget.editContext.token}'
         ..fields['slot'] = slot ?? 'main_image';
@@ -1245,14 +1695,19 @@ class _EditListingSheetState extends State<EditListingSheet> {
       setState(() {
         current = current.copyWith(
           mainImageUrl: data['mainImageUrl'] as String?,
-          galleryImageUrls: (data['galleryImageUrls'] as List<dynamic>? ?? const []).cast<String>(),
-          galleryImageSlots: (data['galleryImageSlots'] as List<dynamic>? ?? const []).cast<String>(),
+          galleryImageUrls:
+              (data['galleryImageUrls'] as List<dynamic>? ?? const [])
+                  .cast<String>(),
+          galleryImageSlots:
+              (data['galleryImageSlots'] as List<dynamic>? ?? const [])
+                  .cast<String>(),
           hasVideo: data['videoUrl'] != null,
           videoUrl: data['videoUrl'] as String?,
         );
       });
     } catch (exception) {
-      setState(() => error = 'Téléchargement impossible : ${exception.toString().replaceFirst('Exception: ', '')}');
+      setState(() => error =
+          'Téléchargement impossible : ${exception.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) {
         setState(() {
@@ -1265,7 +1720,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
 
   Future<void> _deleteMedia({required String slot}) async {
     if (current.id == null || widget.editContext.token.isEmpty) {
-      setState(() => error = 'Mode démo : connectez-vous comme bailleur pour supprimer ce média.');
+      setState(() => error =
+          'Mode démo : connectez-vous comme bailleur pour supprimer ce média.');
       return;
     }
 
@@ -1275,7 +1731,9 @@ class _EditListingSheetState extends State<EditListingSheet> {
     });
 
     try {
-      final uri = Uri.parse('${widget.editContext.mediaEndpoint}/api/properties/${current.id}/media').replace(
+      final uri = Uri.parse(
+              '${widget.editContext.mediaEndpoint}/api/properties/${current.id}/media')
+          .replace(
         queryParameters: {'slot': slot},
       );
       final request = http.Request('DELETE', uri)
@@ -1290,8 +1748,12 @@ class _EditListingSheetState extends State<EditListingSheet> {
       setState(() {
         current = current.copyWith(
           mainImageUrl: data['mainImageUrl'] as String?,
-          galleryImageUrls: (data['galleryImageUrls'] as List<dynamic>? ?? const []).cast<String>(),
-          galleryImageSlots: (data['galleryImageSlots'] as List<dynamic>? ?? const []).cast<String>(),
+          galleryImageUrls:
+              (data['galleryImageUrls'] as List<dynamic>? ?? const [])
+                  .cast<String>(),
+          galleryImageSlots:
+              (data['galleryImageSlots'] as List<dynamic>? ?? const [])
+                  .cast<String>(),
           hasVideo: data['videoUrl'] != null,
           videoUrl: data['videoUrl'] as String?,
           clearMainImage: slot == 'main_image',
@@ -1299,7 +1761,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
         );
       });
     } catch (exception) {
-      setState(() => error = 'Suppression impossible : ${exception.toString().replaceFirst('Exception: ', '')}');
+      setState(() => error =
+          'Suppression impossible : ${exception.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => deletingMedia = false);
     }
@@ -1319,7 +1782,12 @@ class _EditListingSheetState extends State<EditListingSheet> {
     if (current.mainImageUrl == null) return 'main_image';
     final occupiedSlots = current.galleryImageSlots.isNotEmpty
         ? current.galleryImageSlots.toSet()
-        : {for (var index = 1; index <= current.galleryImageUrls.length; index++) 'image_$index'};
+        : {
+            for (var index = 1;
+                index <= current.galleryImageUrls.length;
+                index++)
+              'image_$index'
+          };
     for (var index = 1; index <= 4; index++) {
       final slot = 'image_$index';
       if (!occupiedSlots.contains(slot)) return slot;
@@ -1327,7 +1795,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
     return null;
   }
 
-  int get _imageCount => (current.mainImageUrl == null ? 0 : 1) + current.galleryImageUrls.length;
+  int get _imageCount =>
+      (current.mainImageUrl == null ? 0 : 1) + current.galleryImageUrls.length;
 
   Widget _mediaThumbnail(String url, String slot) {
     return Padding(
@@ -1345,7 +1814,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
                 width: 64,
                 height: 64,
                 color: const Color(0xFFFFE8E8),
-                child: const Icon(Icons.broken_image_outlined, color: Colors.redAccent, size: 24),
+                child: const Icon(Icons.broken_image_outlined,
+                    color: Colors.redAccent, size: 24),
               ),
             ),
           ),
@@ -1383,26 +1853,38 @@ class _EditListingSheetState extends State<EditListingSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Modifier l\u2019annonce', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            Text('Modifier l\u2019annonce',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 16),
             TextField(
               controller: priceController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Prix (FCFA)', prefixIcon: Icon(Icons.payments)),
+              decoration: const InputDecoration(
+                  labelText: 'Prix (FCFA)', prefixIcon: Icon(Icons.payments)),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: descriptionController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.description)),
+              decoration: const InputDecoration(
+                  labelText: 'Description',
+                  prefixIcon: Icon(Icons.description)),
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: savingText ? null : _saveText,
               icon: savingText
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.save),
-              label: Text(savingText ? 'Enregistrement...' : 'Enregistrer prix & description'),
+              label: Text(savingText
+                  ? 'Enregistrement...'
+                  : 'Enregistrer prix & description'),
             ),
             const SizedBox(height: 20),
             if (_imageCount > 0) ...[
@@ -1416,10 +1898,14 @@ class _EditListingSheetState extends State<EditListingSheet> {
                         current.mainImageUrl!,
                         'main_image',
                       ),
-                    for (var index = 0; index < current.galleryImageUrls.length; index++)
+                    for (var index = 0;
+                        index < current.galleryImageUrls.length;
+                        index++)
                       _mediaThumbnail(
                         current.galleryImageUrls[index],
-                        index < current.galleryImageSlots.length ? current.galleryImageSlots[index] : 'image_${index + 1}',
+                        index < current.galleryImageSlots.length
+                            ? current.galleryImageSlots[index]
+                            : 'image_${index + 1}',
                       ),
                   ],
                 ),
@@ -1431,10 +1917,15 @@ class _EditListingSheetState extends State<EditListingSheet> {
                 children: [
                   const Icon(Icons.videocam, color: IvoryColors.green),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Vidéo de présentation', style: TextStyle(fontWeight: FontWeight.w700))),
+                  const Expanded(
+                      child: Text('Vidéo de présentation',
+                          style: TextStyle(fontWeight: FontWeight.w700))),
                   IconButton(
-                    onPressed: deletingMedia ? null : () => _deleteMedia(slot: 'video'),
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    onPressed: deletingMedia
+                        ? null
+                        : () => _deleteMedia(slot: 'video'),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Colors.redAccent),
                     tooltip: 'Supprimer la vidéo',
                   ),
                 ],
@@ -1445,9 +1936,15 @@ class _EditListingSheetState extends State<EditListingSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: (uploadingImage || deletingMedia || _imageCount >= 5) ? null : () => _pickAndUpload(isVideo: false),
+                    onPressed:
+                        (uploadingImage || deletingMedia || _imageCount >= 5)
+                            ? null
+                            : () => _pickAndUpload(isVideo: false),
                     icon: uploadingImage
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.photo_camera),
                     label: Text('Photo ($_imageCount/5)'),
                   ),
@@ -1455,9 +1952,14 @@ class _EditListingSheetState extends State<EditListingSheet> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: (uploadingVideo || deletingMedia) ? null : () => _pickAndUpload(isVideo: true),
+                    onPressed: (uploadingVideo || deletingMedia)
+                        ? null
+                        : () => _pickAndUpload(isVideo: true),
                     icon: uploadingVideo
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.videocam),
                     label: const Text('Vid\u00e9o'),
                   ),
@@ -1494,7 +1996,8 @@ class PropertyDetails extends StatelessWidget {
     final images = _allImages;
     if (images.isEmpty) return;
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ImageViewerPage(images: images, initialIndex: index)),
+      MaterialPageRoute(
+          builder: (_) => ImageViewerPage(images: images, initialIndex: index)),
     );
   }
 
@@ -1513,7 +2016,8 @@ class PropertyDetails extends StatelessWidget {
                 height: 260,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const MediaPlaceholder(icon: Icons.image_not_supported),
+                errorBuilder: (context, error, stackTrace) =>
+                    const MediaPlaceholder(icon: Icons.image_not_supported),
               ),
             ),
           )
@@ -1528,7 +2032,8 @@ class PropertyDetails extends StatelessWidget {
               itemCount: property.galleryImageUrls.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, index) => GestureDetector(
-                onTap: () => _openViewer(context, (property.mainImageUrl != null ? 1 : 0) + index),
+                onTap: () => _openViewer(
+                    context, (property.mainImageUrl != null ? 1 : 0) + index),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.network(
@@ -1536,7 +2041,11 @@ class PropertyDetails extends StatelessWidget {
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const SizedBox(width: 56, height: 56, child: Icon(Icons.broken_image, size: 20)),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: Icon(Icons.broken_image, size: 20)),
                   ),
                 ),
               ),
@@ -1549,19 +2058,31 @@ class PropertyDetails extends StatelessWidget {
           runSpacing: 8,
           children: [
             DetailChip(icon: Icons.category, label: property.category),
-            DetailChip(icon: Icons.place, label: '${property.city}, ${property.district}'),
+            DetailChip(
+                icon: Icons.place,
+                label: '${property.city}, ${property.district}'),
             DetailChip(icon: Icons.payments, label: '${property.price} FCFA'),
-            DetailChip(icon: Icons.meeting_room, label: '${property.rooms} pi\u00e8ces'),
-            DetailChip(icon: Icons.square_foot, label: '${property.surface} m\u00b2'),
+            DetailChip(
+                icon: Icons.meeting_room,
+                label: '${property.rooms} pi\u00e8ces'),
+            DetailChip(
+                icon: Icons.square_foot, label: '${property.surface} m\u00b2'),
             DetailChip(icon: Icons.verified, label: property.status),
-            if (property.hasVideo) const DetailChip(icon: Icons.videocam, label: 'Vid\u00e9o disponible'),
+            if (property.hasVideo)
+              const DetailChip(
+                  icon: Icons.videocam, label: 'Vid\u00e9o disponible'),
           ],
         ),
         if (property.description.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text('Description', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+          Text('Description',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text(property.description, style: const TextStyle(color: Colors.black87)),
+          Text(property.description,
+              style: const TextStyle(color: Colors.black87)),
         ],
         if (property.videoUrl != null) ...[
           const SizedBox(height: 12),
@@ -1585,7 +2106,9 @@ class VideoCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => VideoPlayerPage(videoUrl: videoUrl, title: title)),
+          MaterialPageRoute(
+              builder: (_) =>
+                  VideoPlayerPage(videoUrl: videoUrl, title: title)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -1598,25 +2121,29 @@ class VideoCard extends StatelessWidget {
                   color: IvoryColors.green.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.play_circle_fill, color: IvoryColors.green, size: 28),
+                child: const Icon(Icons.play_circle_fill,
+                    color: IvoryColors.green, size: 28),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Vidéo de présentation', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const Text('Vidéo de présentation',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 2),
                     Text(
                       title,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.black54),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black45),
+              const Icon(Icons.arrow_forward_ios,
+                  size: 14, color: Colors.black45),
             ],
           ),
         ),
@@ -1626,7 +2153,8 @@ class VideoCard extends StatelessWidget {
 }
 
 class VideoPlayerPage extends StatefulWidget {
-  const VideoPlayerPage({required this.videoUrl, required this.title, super.key});
+  const VideoPlayerPage(
+      {required this.videoUrl, required this.title, super.key});
 
   final String videoUrl;
   final String title;
@@ -1640,7 +2168,9 @@ String _videoUrlForPlayback(String rawUrl) {
   if (trimmed.isEmpty) return '';
 
   final lower = trimmed.toLowerCase();
-  if (lower.contains('w3schools.com') || lower.contains('example.com') || lower.contains('commondatastorage.googleapis.com')) {
+  if (lower.contains('w3schools.com') ||
+      lower.contains('example.com') ||
+      lower.contains('commondatastorage.googleapis.com')) {
     return 'https://media.w3.org/2010/05/sintel/trailer.mp4';
   }
 
@@ -1700,7 +2230,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.orangeAccent, size: 42),
+                    const Icon(Icons.error_outline,
+                        color: Colors.orangeAccent, size: 42),
                     const SizedBox(height: 12),
                     Text(
                       error!,
@@ -1721,9 +2252,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           ? FloatingActionButton(
               backgroundColor: IvoryColors.green,
               onPressed: () => setState(() {
-                controller.value.isPlaying ? controller.pause() : controller.play();
+                controller.value.isPlaying
+                    ? controller.pause()
+                    : controller.play();
               }),
-              child: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow),
+              child: Icon(
+                  controller.value.isPlaying ? Icons.pause : Icons.play_arrow),
             )
           : null,
     );
@@ -1749,7 +2283,9 @@ class DetailChip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(label,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -1776,7 +2312,8 @@ class MediaPlaceholder extends StatelessWidget {
 }
 
 class ImageViewerPage extends StatefulWidget {
-  const ImageViewerPage({required this.images, required this.initialIndex, super.key});
+  const ImageViewerPage(
+      {required this.images, required this.initialIndex, super.key});
 
   final List<String> images;
   final int initialIndex;
@@ -1786,7 +2323,8 @@ class ImageViewerPage extends StatefulWidget {
 }
 
 class _ImageViewerPageState extends State<ImageViewerPage> {
-  late final PageController controller = PageController(initialPage: widget.initialIndex);
+  late final PageController controller =
+      PageController(initialPage: widget.initialIndex);
   late int currentIndex = widget.initialIndex;
 
   @override
@@ -1815,7 +2353,10 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
             child: Image.network(
               widget.images[index],
               fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.white54, size: 64),
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                  Icons.broken_image,
+                  color: Colors.white54,
+                  size: 64),
             ),
           ),
         ),
@@ -1863,13 +2404,15 @@ class MaintenanceTile extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ListTile(
-        leading: Icon(Icons.construction, color: Theme.of(context).colorScheme.primary),
+        leading: Icon(Icons.construction,
+            color: Theme.of(context).colorScheme.primary),
         title: Text(request.title),
         subtitle: Text('${request.propertyTitle} • ${request.priority}'),
         trailing: Text(request.status),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => MaintenanceEditPage(request: request, editContext: editContext),
+            builder: (_) =>
+                MaintenanceEditPage(request: request, editContext: editContext),
           ),
         ),
       ),
@@ -1878,7 +2421,8 @@ class MaintenanceTile extends StatelessWidget {
 }
 
 class DocumentItem {
-  DocumentItem(this.id, this.propertyId, this.propertyTitle, this.title, this.type, this.fileUrl);
+  DocumentItem(this.id, this.propertyId, this.propertyTitle, this.title,
+      this.type, this.fileUrl);
 
   final String id;
   final String propertyId;
@@ -1911,7 +2455,8 @@ class DocumentTile extends StatelessWidget {
 }
 
 class ContractUploadCard extends StatelessWidget {
-  const ContractUploadCard({required this.properties, required this.editContext, super.key});
+  const ContractUploadCard(
+      {required this.properties, required this.editContext, super.key});
 
   final List<Property> properties;
   final PropertyEditContext editContext;
@@ -1927,7 +2472,8 @@ class ContractUploadCard extends StatelessWidget {
         onTap: editContext.canEdit
             ? () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => LeaseContractUploadPage(properties: properties, editContext: editContext),
+                    builder: (_) => LeaseContractUploadPage(
+                        properties: properties, editContext: editContext),
                   ),
                 )
             : null,
@@ -1937,13 +2483,15 @@ class ContractUploadCard extends StatelessWidget {
 }
 
 class LeaseContractUploadPage extends StatefulWidget {
-  const LeaseContractUploadPage({required this.properties, required this.editContext, super.key});
+  const LeaseContractUploadPage(
+      {required this.properties, required this.editContext, super.key});
 
   final List<Property> properties;
   final PropertyEditContext editContext;
 
   @override
-  State<LeaseContractUploadPage> createState() => _LeaseContractUploadPageState();
+  State<LeaseContractUploadPage> createState() =>
+      _LeaseContractUploadPageState();
 }
 
 class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
@@ -1966,8 +2514,11 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
   }
 
   Future<void> _upload() async {
-    if (propertyId == null || selectedFile?.path == null || titleController.text.trim().isEmpty) {
-      setState(() => error = 'Choisissez une propriété, un titre et un fichier.');
+    if (propertyId == null ||
+        selectedFile?.path == null ||
+        titleController.text.trim().isEmpty) {
+      setState(
+          () => error = 'Choisissez une propriété, un titre et un fichier.');
       return;
     }
     setState(() {
@@ -1975,11 +2526,13 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
       error = null;
     });
     try {
-      final uri = Uri.parse('${widget.editContext.mediaEndpoint}/api/properties/$propertyId/documents');
+      final uri = Uri.parse(
+          '${widget.editContext.mediaEndpoint}/api/properties/$propertyId/documents');
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer ${widget.editContext.token}'
         ..fields['title'] = titleController.text.trim();
-      request.files.add(await http.MultipartFile.fromPath('file', selectedFile!.path!));
+      request.files
+          .add(await http.MultipartFile.fromPath('file', selectedFile!.path!));
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -2008,7 +2561,8 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
             decoration: const InputDecoration(labelText: 'Propriété louée'),
             items: widget.properties
                 .where((property) => property.id != null)
-                .map((property) => DropdownMenuItem(value: property.id, child: Text(property.title)))
+                .map((property) => DropdownMenuItem(
+                    value: property.id, child: Text(property.title)))
                 .toList(),
             onChanged: (value) => setState(() => propertyId = value),
           ),
@@ -2026,8 +2580,12 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: uploading ? null : _upload,
-            icon: uploading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator()) : const Icon(Icons.cloud_upload),
-            label: Text(uploading ? 'Téléversement...' : 'Téléverser le contrat'),
+            icon: uploading
+                ? const SizedBox(
+                    width: 18, height: 18, child: CircularProgressIndicator())
+                : const Icon(Icons.cloud_upload),
+            label:
+                Text(uploading ? 'Téléversement...' : 'Téléverser le contrat'),
           ),
           if (error != null) ...[
             const SizedBox(height: 12),
@@ -2040,7 +2598,8 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
 }
 
 class MaintenanceEditPage extends StatefulWidget {
-  const MaintenanceEditPage({required this.request, required this.editContext, super.key});
+  const MaintenanceEditPage(
+      {required this.request, required this.editContext, super.key});
 
   final Maintenance request;
   final PropertyEditContext editContext;
@@ -2050,8 +2609,10 @@ class MaintenanceEditPage extends StatefulWidget {
 }
 
 class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
-  late final titleController = TextEditingController(text: widget.request.title);
-  late final descriptionController = TextEditingController(text: widget.request.description);
+  late final titleController =
+      TextEditingController(text: widget.request.title);
+  late final descriptionController =
+      TextEditingController(text: widget.request.description);
   late String priority = widget.request.priority;
   late String status = widget.request.status;
   bool saving = false;
@@ -2100,14 +2661,18 @@ class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(widget.request.propertyTitle, style: Theme.of(context).textTheme.titleMedium),
+          Text(widget.request.propertyTitle,
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Sujet')),
+          TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Sujet')),
           const SizedBox(height: 12),
           TextField(
             controller: descriptionController,
             maxLines: 5,
-            decoration: const InputDecoration(labelText: 'Description du problème'),
+            decoration:
+                const InputDecoration(labelText: 'Description du problème'),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -2136,7 +2701,10 @@ class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: saving ? null : _save,
-            icon: saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator()) : const Icon(Icons.save),
+            icon: saving
+                ? const SizedBox(
+                    width: 18, height: 18, child: CircularProgressIndicator())
+                : const Icon(Icons.save),
             label: Text(saving ? 'Enregistrement...' : 'Enregistrer'),
           ),
           if (error != null) ...[
@@ -2197,13 +2765,15 @@ class ErrorCard extends StatelessWidget {
         color: const Color(0xFFFFF1E8),
         child: Padding(
           padding: const EdgeInsets.all(14),
-          child: Text(message, style: const TextStyle(color: Color(0xFF9A3D16))),
+          child:
+              Text(message, style: const TextStyle(color: Color(0xFF9A3D16))),
         ),
       );
 }
 
 class CacheStatusBar extends StatelessWidget {
-  const CacheStatusBar({required this.lastSynced, required this.loading, super.key});
+  const CacheStatusBar(
+      {required this.lastSynced, required this.loading, super.key});
 
   final DateTime? lastSynced;
   final bool loading;
@@ -2218,10 +2788,12 @@ class CacheStatusBar extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(loading ? Icons.sync : Icons.cached, size: 14, color: Colors.black45),
+        Icon(loading ? Icons.sync : Icons.cached,
+            size: 14, color: Colors.black45),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black45)),
+          child: Text(label,
+              style: const TextStyle(fontSize: 11, color: Colors.black45)),
         ),
       ],
     );
@@ -2238,7 +2810,8 @@ class MutedText extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(text, style: const TextStyle(color: Colors.black54));
+  Widget build(BuildContext context) =>
+      Text(text, style: const TextStyle(color: Colors.black54));
 }
 
 class TestDataBadge extends StatelessWidget {
@@ -2258,7 +2831,11 @@ class TestDataBadge extends StatelessWidget {
         children: [
           Icon(Icons.science, size: 12, color: Color(0xFF8A6D00)),
           SizedBox(width: 4),
-          Text('Donnée de test', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF8A6D00))),
+          Text('Donnée de test',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF8A6D00))),
         ],
       ),
     );
@@ -2283,14 +2860,17 @@ class GraphQLClient {
     );
 
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    if (response.statusCode < 200 || response.statusCode >= 300 || payload['errors'] != null) {
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        payload['errors'] != null) {
       throw Exception(payload['errors'] ?? 'HTTP ${response.statusCode}');
     }
 
     return payload['data'] as Map<String, dynamic>;
   }
 
-  Future<String> login(String endpoint, String username, String password) async {
+  Future<String> login(
+      String endpoint, String username, String password) async {
     final data = await query(
       endpoint,
       '',
@@ -2308,7 +2888,8 @@ mutation Login($username: String!, $password: String!) {
 ''';
 
 class ManagerDashboard {
-  ManagerDashboard(this.properties, this.leases, this.documents, this.payments, this.maintenance, this.notifications, this.interestRequests);
+  ManagerDashboard(this.properties, this.leases, this.documents, this.payments,
+      this.maintenance, this.notifications, this.interestRequests);
 
   final List<Property> properties;
   final List<LeaseItem> leases;
@@ -2318,14 +2899,17 @@ class ManagerDashboard {
   final List<NotificationItem> notifications;
   final List<InterestRequestItem> interestRequests;
 
-  factory ManagerDashboard.fromJson(Map<String, dynamic> json) => ManagerDashboard(
+  factory ManagerDashboard.fromJson(Map<String, dynamic> json) =>
+      ManagerDashboard(
         _items(json['myLandlordProperties']).map(Property.fromJson).toList(),
         _items(json['leases']).map(LeaseItem.fromJson).toList(),
         _items(json['propertyDocuments']).map(DocumentItem.fromJson).toList(),
         _items(json['rentPayments']).map(Payment.fromJson).toList(),
         _items(json['maintenanceRequests']).map(Maintenance.fromJson).toList(),
         _items(json['notifications']).map(NotificationItem.fromJson).toList(),
-        _items(json['propertyInterestRequests']).map(InterestRequestItem.fromJson).toList(),
+        _items(json['propertyInterestRequests'])
+            .map(InterestRequestItem.fromJson)
+            .toList(),
       );
 
   factory ManagerDashboard.demo() => ManagerDashboard(
@@ -2340,16 +2924,37 @@ class ManagerDashboard {
             920000,
             'Disponible',
             isTestData: true,
-            description: 'Villa moderne avec piscine, jardin paysager et garage double.',
+            description:
+                'Villa moderne avec piscine, jardin paysager et garage double.',
             mainImageUrl: 'https://placehold.co/600x400',
             hasVideo: true,
             videoUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
           ),
-          Property('Appartement duplex', 'Residence', 'Abidjan', 'Yopougon', 4, 170, 710000, 'Loué', isTestData: true, description: 'Duplex lumineux avec balcon panoramique sur la lagune.'),
-          Property('Studio meublé', 'Residence', 'Yamoussoukro', 'Centre', 1, 42, 195000, 'Disponible', isTestData: true, description: 'Studio compact et meublé, idéal pour étudiant ou jeune actif.'),
-          Property('Bureau commercial', 'Business', 'Abidjan', 'Plateau', 2, 98, 480000, 'Occupé', isTestData: true, description: 'Espace de bureaux climatisé, proche des institutions financières.'),
-          Property('Local commercial passant', 'Commerce', 'Yamoussoukro', 'Centre', 1, 60, 260000, 'Disponible', isTestData: true, description: 'Local en rez-de-chaussée avec forte visibilité et grand accès client.'),
-          Property('Entrepôt logistique', 'Industrie', 'Abidjan', 'Vridi', 1, 540, 1150000, 'Disponible', isTestData: true, description: 'Entrepôt sécurisé avec quai de chargement et bureaux annexes.'),
+          Property('Appartement duplex', 'Residence', 'Abidjan', 'Yopougon', 4,
+              170, 710000, 'Loué',
+              isTestData: true,
+              description:
+                  'Duplex lumineux avec balcon panoramique sur la lagune.'),
+          Property('Studio meublé', 'Residence', 'Yamoussoukro', 'Centre', 1,
+              42, 195000, 'Disponible',
+              isTestData: true,
+              description:
+                  'Studio compact et meublé, idéal pour étudiant ou jeune actif.'),
+          Property('Bureau commercial', 'Business', 'Abidjan', 'Plateau', 2, 98,
+              480000, 'Occupé',
+              isTestData: true,
+              description:
+                  'Espace de bureaux climatisé, proche des institutions financières.'),
+          Property('Local commercial passant', 'Commerce', 'Yamoussoukro',
+              'Centre', 1, 60, 260000, 'Disponible',
+              isTestData: true,
+              description:
+                  'Local en rez-de-chaussée avec forte visibilité et grand accès client.'),
+          Property('Entrepôt logistique', 'Industrie', 'Abidjan', 'Vridi', 1,
+              540, 1150000, 'Disponible',
+              isTestData: true,
+              description:
+                  'Entrepôt sécurisé avec quai de chargement et bureaux annexes.'),
         ],
         [
           LeaseItem('Villa de prestige', '01/09/2026', '920000', 'Actif'),
@@ -2361,8 +2966,10 @@ class ManagerDashboard {
           Payment('Appartement duplex', '710000', 'En attente'),
         ],
         [
-          Maintenance('1', 'Villa de prestige', 'Remplacement plomberie', 'Fuite dans la salle de bain.', 'Moyenne', 'Planifiée'),
-          Maintenance('2', 'Appartement duplex', 'Nettoyage toiture', 'Entretien préventif de la toiture.', 'Faible', 'En cours'),
+          Maintenance('1', 'Villa de prestige', 'Remplacement plomberie',
+              'Fuite dans la salle de bain.', 'Moyenne', 'Planifiée'),
+          Maintenance('2', 'Appartement duplex', 'Nettoyage toiture',
+              'Entretien préventif de la toiture.', 'Faible', 'En cours'),
         ],
         [],
         [],
@@ -2439,7 +3046,8 @@ class Property {
 
   factory Property.fromJson(Map<String, dynamic> json) => Property(
         json['title'] as String? ?? '-',
-        (json['category'] as Map<String, dynamic>?)?['title'] as String? ?? 'Autres',
+        (json['category'] as Map<String, dynamic>?)?['title'] as String? ??
+            'Autres',
         json['city'] as String? ?? '-',
         json['district'] as String? ?? '-',
         _int(json['rooms']),
@@ -2450,8 +3058,12 @@ class Property {
         isTestData: json['isTestData'] as bool? ?? false,
         description: json['description'] as String? ?? '',
         mainImageUrl: json['mainImageUrl'] as String?,
-        galleryImageUrls: (json['galleryImageUrls'] as List<dynamic>? ?? const []).cast<String>(),
-        galleryImageSlots: (json['galleryImageSlots'] as List<dynamic>? ?? const []).cast<String>(),
+        galleryImageUrls:
+            (json['galleryImageUrls'] as List<dynamic>? ?? const [])
+                .cast<String>(),
+        galleryImageSlots:
+            (json['galleryImageSlots'] as List<dynamic>? ?? const [])
+                .cast<String>(),
         hasVideo: json['hasVideo'] as bool? ?? false,
         videoUrl: json['videoUrl'] as String?,
       );
@@ -2488,7 +3100,8 @@ class Payment {
 }
 
 class Maintenance {
-  Maintenance(this.id, this.propertyTitle, this.title, this.description, this.priority, this.status);
+  Maintenance(this.id, this.propertyTitle, this.title, this.description,
+      this.priority, this.status);
 
   final String id;
   final String propertyTitle;
@@ -2508,7 +3121,8 @@ class Maintenance {
 }
 
 class NotificationItem {
-  NotificationItem(this.id, this.title, this.message, this.propertyTitle, this.interestMessage, this.isRead, this.createdAt);
+  NotificationItem(this.id, this.title, this.message, this.propertyTitle,
+      this.interestMessage, this.isRead, this.createdAt);
 
   final String id;
   final String title;
@@ -2518,19 +3132,23 @@ class NotificationItem {
   final bool isRead;
   final String createdAt;
 
-  factory NotificationItem.fromJson(Map<String, dynamic> json) => NotificationItem(
+  factory NotificationItem.fromJson(Map<String, dynamic> json) =>
+      NotificationItem(
         json['id'] as String? ?? '',
         json['title'] as String? ?? 'Notification',
         json['message'] as String? ?? '',
         _nestedTitle(json['property']),
-        ((json['interestRequest'] as Map<String, dynamic>?)?['message'] as String?) ?? '',
+        ((json['interestRequest'] as Map<String, dynamic>?)?['message']
+                as String?) ??
+            '',
         json['isRead'] as bool? ?? false,
         json['createdAt'] as String? ?? '',
       );
 }
 
 class NotificationTile extends StatelessWidget {
-  const NotificationTile(this.notification, {required this.editContext, super.key});
+  const NotificationTile(this.notification,
+      {required this.editContext, super.key});
 
   final NotificationItem notification;
   final PropertyEditContext editContext;
@@ -2546,7 +3164,8 @@ class NotificationTile extends StatelessWidget {
       editContext.onUpdated();
     } catch (exception) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Suppression impossible : $exception')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Suppression impossible : $exception')));
       }
     }
   }
@@ -2557,10 +3176,13 @@ class NotificationTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(
-          notification.isRead ? Icons.notifications_none : Icons.notifications_active,
+          notification.isRead
+              ? Icons.notifications_none
+              : Icons.notifications_active,
           color: notification.isRead ? Colors.grey : IvoryColors.orange,
         ),
-        title: Text(notification.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        title: Text(notification.title,
+            style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(
           '${notification.message}\n${notification.propertyTitle}\n'
           '${notification.interestMessage.isEmpty ? 'Aucun message initial.' : notification.interestMessage}',
@@ -2571,7 +3193,8 @@ class NotificationTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!notification.isRead) const Icon(Icons.circle, size: 10, color: IvoryColors.orange),
+            if (!notification.isRead)
+              const Icon(Icons.circle, size: 10, color: IvoryColors.orange),
             IconButton(
               onPressed: () => _delete(context),
               icon: const Icon(Icons.delete_outline),
@@ -2595,8 +3218,10 @@ class UnreadNotificationsBanner extends StatelessWidget {
     return Card(
       color: const Color(0xFFFFF4E5),
       child: ListTile(
-        leading: const Icon(Icons.notifications_active, color: IvoryColors.orange),
-        title: Text(notifications.first.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        leading:
+            const Icon(Icons.notifications_active, color: IvoryColors.orange),
+        title: Text(notifications.first.title,
+            style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(
           '${notifications.first.message}\n${notifications.first.propertyTitle}\n'
           '${notifications.first.interestMessage.isEmpty ? 'Aucun message initial.' : notifications.first.interestMessage}',
@@ -2604,14 +3229,25 @@ class UnreadNotificationsBanner extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         isThreeLine: true,
-        trailing: notifications.length > 1 ? Text('+${notifications.length - 1}') : null,
+        trailing: notifications.length > 1
+            ? Text('+${notifications.length - 1}')
+            : null,
       ),
     );
   }
 }
 
 class InterestRequestItem {
-  InterestRequestItem(this.id, this.propertyTitle, this.status, this.profession, this.salaryRange, this.employer, this.occupantsCount, this.leaseStartDate, this.message);
+  InterestRequestItem(
+      this.id,
+      this.propertyTitle,
+      this.status,
+      this.profession,
+      this.salaryRange,
+      this.employer,
+      this.occupantsCount,
+      this.leaseStartDate,
+      this.message);
 
   final String id;
   final String propertyTitle;
@@ -2623,7 +3259,8 @@ class InterestRequestItem {
   final String leaseStartDate;
   final String message;
 
-  factory InterestRequestItem.fromJson(Map<String, dynamic> json) => InterestRequestItem(
+  factory InterestRequestItem.fromJson(Map<String, dynamic> json) =>
+      InterestRequestItem(
         json['id'] as String? ?? '',
         _nestedTitle(json['property']),
         json['status'] as String? ?? '-',
@@ -2637,7 +3274,8 @@ class InterestRequestItem {
 }
 
 class InterestRequestTile extends StatelessWidget {
-  const InterestRequestTile(this.request, {required this.endpoint, required this.token, super.key});
+  const InterestRequestTile(this.request,
+      {required this.endpoint, required this.token, super.key});
 
   final InterestRequestItem request;
   final String endpoint;
@@ -2649,7 +3287,8 @@ class InterestRequestTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: const Icon(Icons.forum, color: IvoryColors.green),
-        title: Text(request.propertyTitle, style: const TextStyle(fontWeight: FontWeight.w800)),
+        title: Text(request.propertyTitle,
+            style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(
           'Statut : ${request.status}\nProfession : ${request.profession}\nSalaire : ${request.salaryRange}\n'
           'Occupants : ${request.occupantsCount} • Entrée : ${request.leaseStartDate}\n'
@@ -2676,7 +3315,13 @@ class InterestRequestTile extends StatelessWidget {
 }
 
 class InterestChatPage extends StatefulWidget {
-  const InterestChatPage({required this.interestRequestId, required this.propertyTitle, required this.endpoint, required this.token, required this.isManager, super.key});
+  const InterestChatPage(
+      {required this.interestRequestId,
+      required this.propertyTitle,
+      required this.endpoint,
+      required this.token,
+      required this.isManager,
+      super.key});
 
   final String interestRequestId;
   final String propertyTitle;
@@ -2711,8 +3356,14 @@ class _InterestChatPageState extends State<InterestChatPage> {
 
   Future<void> _loadMessages() async {
     try {
-      final data = await GraphQLClient().query(widget.endpoint, widget.token, interestMessagesQuery, variables: {'interestRequestId': widget.interestRequestId});
-      if (mounted) setState(() => messages = _items(data['propertyInterestMessages']).map(InterestMessageItem.fromJson).toList());
+      final data = await GraphQLClient().query(
+          widget.endpoint, widget.token, interestMessagesQuery,
+          variables: {'interestRequestId': widget.interestRequestId});
+      if (mounted) {
+        setState(() => messages = _items(data['propertyInterestMessages'])
+            .map(InterestMessageItem.fromJson)
+            .toList());
+      }
     } catch (exception) {
       if (mounted) setState(() => error = 'Chargement impossible : $exception');
     } finally {
@@ -2721,22 +3372,37 @@ class _InterestChatPageState extends State<InterestChatPage> {
   }
 
   Future<void> _chooseVisitDate() async {
-    final date = await showDatePicker(context: context, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)), initialDate: proposedVisitAt ?? DateTime.now());
+    final date = await showDatePicker(
+        context: context,
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+        initialDate: proposedVisitAt ?? DateTime.now());
     if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(proposedVisitAt ?? DateTime.now()));
-    if (time != null) setState(() => proposedVisitAt = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(proposedVisitAt ?? DateTime.now()));
+    if (time != null) {
+      setState(() => proposedVisitAt =
+          DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    }
   }
 
   Future<void> _send() async {
-    if (messageController.text.trim().isEmpty || (messageType == 'visit_proposal' && proposedVisitAt == null)) return;
-    setState(() { sending = true; error = null; });
+    if (messageController.text.trim().isEmpty ||
+        (messageType == 'visit_proposal' && proposedVisitAt == null)) return;
+    setState(() {
+      sending = true;
+      error = null;
+    });
     try {
-      await GraphQLClient().query(widget.endpoint, widget.token, sendInterestMessageMutation, variables: {
-        'interestRequestId': widget.interestRequestId,
-        'message': messageController.text.trim(),
-        'messageType': messageType,
-        'proposedVisitAt': proposedVisitAt?.toUtc().toIso8601String(),
-      });
+      await GraphQLClient().query(
+          widget.endpoint, widget.token, sendInterestMessageMutation,
+          variables: {
+            'interestRequestId': widget.interestRequestId,
+            'message': messageController.text.trim(),
+            'messageType': messageType,
+            'proposedVisitAt': proposedVisitAt?.toUtc().toIso8601String(),
+          });
       messageController.clear();
       await _loadMessages();
     } catch (exception) {
@@ -2752,7 +3418,10 @@ class _InterestChatPageState extends State<InterestChatPage> {
       appBar: AppBar(title: Text(widget.propertyTitle)),
       body: Column(
         children: [
-          if (error != null) Padding(padding: const EdgeInsets.all(12), child: Text(error!, style: const TextStyle(color: Colors.red))),
+          if (error != null)
+            Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(error!, style: const TextStyle(color: Colors.red))),
           Expanded(
             child: loading
                 ? const Center(child: CircularProgressIndicator())
@@ -2761,7 +3430,8 @@ class _InterestChatPageState extends State<InterestChatPage> {
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: messages.length,
-                        itemBuilder: (context, index) => _MessageBubble(message: messages[index]),
+                        itemBuilder: (context, index) =>
+                            _MessageBubble(message: messages[index]),
                       ),
           ),
           Container(
@@ -2770,21 +3440,54 @@ class _InterestChatPageState extends State<InterestChatPage> {
             child: Column(
               children: [
                 Row(children: [
-                  Expanded(child: DropdownButtonFormField<String>(value: messageType, decoration: const InputDecoration(labelText: 'Type'), items: const [
-                    DropdownMenuItem(value: 'message', child: Text('Message')),
-                    DropdownMenuItem(value: 'visit_proposal', child: Text('Proposer une visite')),
-                    DropdownMenuItem(value: 'visit_confirmation', child: Text('Confirmer la visite')),
-                    DropdownMenuItem(value: 'visit_declined', child: Text('Refuser la visite')),
-                  ], onChanged: (value) => setState(() => messageType = value ?? 'message'))),
-                  if (messageType == 'visit_proposal') IconButton(onPressed: _chooseVisitDate, icon: const Icon(Icons.event), tooltip: 'Choisir une date'),
+                  Expanded(
+                      child: DropdownButtonFormField<String>(
+                          value: messageType,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'message', child: Text('Message')),
+                            DropdownMenuItem(
+                                value: 'visit_proposal',
+                                child: Text('Proposer une visite')),
+                            DropdownMenuItem(
+                                value: 'visit_confirmation',
+                                child: Text('Confirmer la visite')),
+                            DropdownMenuItem(
+                                value: 'visit_declined',
+                                child: Text('Refuser la visite')),
+                          ],
+                          onChanged: (value) => setState(
+                              () => messageType = value ?? 'message'))),
+                  if (messageType == 'visit_proposal')
+                    IconButton(
+                        onPressed: _chooseVisitDate,
+                        icon: const Icon(Icons.event),
+                        tooltip: 'Choisir une date'),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: TextField(controller: messageController, minLines: 1, maxLines: 3, decoration: const InputDecoration(hintText: 'Votre message'))),
+                  Expanded(
+                      child: TextField(
+                          controller: messageController,
+                          minLines: 1,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                              hintText: 'Votre message'))),
                   const SizedBox(width: 8),
-                  IconButton(onPressed: sending ? null : _send, icon: sending ? const CircularProgressIndicator() : const Icon(Icons.send), color: IvoryColors.green, tooltip: 'Envoyer'),
+                  IconButton(
+                      onPressed: sending ? null : _send,
+                      icon: sending
+                          ? const CircularProgressIndicator()
+                          : const Icon(Icons.send),
+                      color: IvoryColors.green,
+                      tooltip: 'Envoyer'),
                 ]),
-                if (proposedVisitAt != null) Align(alignment: Alignment.centerLeft, child: Text('Visite : ${proposedVisitAt!.day}/${proposedVisitAt!.month}/${proposedVisitAt!.year} à ${proposedVisitAt!.hour.toString().padLeft(2, '0')}:${proposedVisitAt!.minute.toString().padLeft(2, '0')}')),
+                if (proposedVisitAt != null)
+                  Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                          'Visite : ${proposedVisitAt!.day}/${proposedVisitAt!.month}/${proposedVisitAt!.year} à ${proposedVisitAt!.hour.toString().padLeft(2, '0')}:${proposedVisitAt!.minute.toString().padLeft(2, '0')}')),
               ],
             ),
           ),
@@ -2795,7 +3498,8 @@ class _InterestChatPageState extends State<InterestChatPage> {
 }
 
 class InterestMessageItem {
-  InterestMessageItem(this.message, this.messageType, this.proposedVisitAt, this.createdAt, this.senderUsername);
+  InterestMessageItem(this.message, this.messageType, this.proposedVisitAt,
+      this.createdAt, this.senderUsername);
 
   final String message;
   final String messageType;
@@ -2803,12 +3507,14 @@ class InterestMessageItem {
   final String createdAt;
   final String senderUsername;
 
-  factory InterestMessageItem.fromJson(Map<String, dynamic> json) => InterestMessageItem(
+  factory InterestMessageItem.fromJson(Map<String, dynamic> json) =>
+      InterestMessageItem(
         json['message'] as String? ?? '',
         json['messageType'] as String? ?? 'message',
         json['proposedVisitAt'] as String?,
         json['createdAt'] as String? ?? '',
-        (json['sender'] as Map<String, dynamic>?)?['username'] as String? ?? 'Utilisateur',
+        (json['sender'] as Map<String, dynamic>?)?['username'] as String? ??
+            'Utilisateur',
       );
 }
 
@@ -2826,10 +3532,12 @@ class _MessageBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(message.senderUsername, style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(message.senderUsername,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text(message.message),
-              if (message.proposedVisitAt != null) Text('Visite proposée : ${message.proposedVisitAt}'),
+              if (message.proposedVisitAt != null)
+                Text('Visite proposée : ${message.proposedVisitAt}'),
             ],
           ),
         ),
@@ -2849,7 +3557,8 @@ String _maintenancePriority(Object? value) {
         'haute': 'high',
         'urgent': 'urgent',
         'urgente': 'urgent',
-      }[normalized] ?? 'normal';
+      }[normalized] ??
+      'normal';
 }
 
 String _maintenanceStatus(Object? value) {
@@ -2863,16 +3572,20 @@ String _maintenanceStatus(Object? value) {
         'resolue': 'resolved',
         'cancelled': 'cancelled',
         'annulee': 'cancelled',
-      }[normalized] ?? 'open';
+      }[normalized] ??
+      'open';
 }
 
-List<Map<String, dynamic>> _items(Object? value) => (value as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
-int _int(Object? value) => value is int ? value : int.tryParse('${value ?? ''}') ?? 0;
-String _nestedTitle(Object? value) => (value as Map<String, dynamic>?)?['title'] as String? ?? '-';
+List<Map<String, dynamic>> _items(Object? value) =>
+    (value as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+int _int(Object? value) =>
+    value is int ? value : int.tryParse('${value ?? ''}') ?? 0;
+String _nestedTitle(Object? value) =>
+    (value as Map<String, dynamic>?)?['title'] as String? ?? '-';
 
 const managerQuery = r'''
-query ManagerDashboard {
-  myLandlordProperties(first: 20) { id title city district rooms surfaceM2 price listingStatus category { title } isTestData description mainImageUrl galleryImageUrls galleryImageSlots hasVideo videoUrl }
+query ManagerDashboard($search: String) {
+  myLandlordProperties(first: 20, search: $search) { id title city district rooms surfaceM2 price listingStatus category { title } isTestData description mainImageUrl galleryImageUrls galleryImageSlots hasVideo videoUrl }
   leases { property { title } startDate rentAmount status }
   propertyDocuments { id property { id title } title documentType visibility file createdAt }
   rentPayments { lease { property { title } } amount status }
