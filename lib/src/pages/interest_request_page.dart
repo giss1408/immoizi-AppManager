@@ -50,8 +50,10 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
       widget.editContext.onUpdated();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(accept
-              ? 'Demande acceptée — ${request.applicantName} est notifié.'
-              : 'Demande refusée — ${request.applicantName} est notifié.')));
+              ? tr('Demande acceptée — {name} est notifié.',
+                  {'name': request.applicantName})
+              : tr('Demande refusée — {name} est notifié.',
+                  {'name': request.applicantName}))));
     } catch (exception) {
       if (mounted) setState(() => error = describeError(exception));
     } finally {
@@ -75,7 +77,7 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Demande de location')),
+      appBar: AppBar(title: Text(tr('Demande de location'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
@@ -88,7 +90,7 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
                   Row(children: [
                     CircleAvatar(
                       backgroundColor: IvoryColors.green.withOpacity(0.12),
-                      child: const Icon(Icons.person, color: IvoryColors.green),
+                      child: Icon(Icons.person, color: IvoryColors.green),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -99,7 +101,7 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
                               style: const TextStyle(
                                   fontSize: 17, fontWeight: FontWeight.w900)),
                           Text(request.propertyTitle,
-                              style: const TextStyle(color: IvoryColors.muted)),
+                              style: TextStyle(color: IvoryColors.muted)),
                         ],
                       ),
                     ),
@@ -110,12 +112,12 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
                   const Divider(height: 28),
                   _Detail(Icons.work_outline, 'Profession', request.profession),
                   if (request.employer.isNotEmpty)
-                    _Detail(Icons.business, 'Employeur', request.employer),
-                  _Detail(Icons.payments_outlined, 'Revenus mensuels',
+                    _Detail(Icons.business, tr('Employeur'), request.employer),
+                  _Detail(Icons.payments_outlined, tr('Revenus mensuels'),
                       request.salaryRange),
                   _Detail(Icons.groups_outlined, 'Occupants',
                       '${request.occupantsCount}'),
-                  _Detail(Icons.event_available, 'Entrée souhaitée',
+                  _Detail(Icons.event_available, tr('Entrée souhaitée'),
                       request.leaseStartDate),
                   if (request.message.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -141,7 +143,7 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
                 child: FilledButton.icon(
                   onPressed: responding ? null : () => _respond(accept: true),
                   icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Accepter'),
+                  label: Text(tr('Accepter')),
                 ),
               ),
               const SizedBox(width: 12),
@@ -149,7 +151,7 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
                 child: OutlinedButton.icon(
                   onPressed: responding ? null : () => _respond(accept: false),
                   icon: const Icon(Icons.cancel_outlined),
-                  label: const Text('Refuser'),
+                  label: Text(tr('Refuser')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Colors.redAccent),
@@ -163,10 +165,10 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
           OutlinedButton.icon(
             onPressed: () => _openChat(messageType: 'visit_proposal'),
             icon: const Icon(Icons.event),
-            label: const Text('Proposer une visite'),
+            label: Text(tr('Proposer une visite')),
             style: OutlinedButton.styleFrom(
               foregroundColor: IvoryColors.green,
-              side: const BorderSide(color: IvoryColors.green),
+              side: BorderSide(color: IvoryColors.green),
             ),
           ),
           const SizedBox(height: 12),
@@ -176,7 +178,7 @@ class _InterestRequestPageState extends State<InterestRequestPage> {
             label: const Text('Conversation'),
             style: OutlinedButton.styleFrom(
               foregroundColor: IvoryColors.ink,
-              side: const BorderSide(color: IvoryColors.border),
+              side: BorderSide(color: IvoryColors.border),
             ),
           ),
           if (error != null) ...[
@@ -225,7 +227,7 @@ class _Detail extends StatelessWidget {
       child: Row(children: [
         Icon(icon, size: 18, color: IvoryColors.green),
         const SizedBox(width: 10),
-        Text('$label : ', style: const TextStyle(color: IvoryColors.muted)),
+        Text('$label : ', style: TextStyle(color: IvoryColors.muted)),
         Expanded(
           child:
               Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -259,22 +261,24 @@ class _ResponseDialogState extends State<_ResponseDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-          widget.accept ? 'Accepter la demande ?' : 'Refuser la demande ?'),
+      title: Text(widget.accept
+          ? tr('Accepter la demande ?')
+          : tr('Refuser la demande ?')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${widget.request.applicantName} sera notifié.'),
+          Text(tr(
+              '{name} sera notifié.', {'name': widget.request.applicantName})),
           const SizedBox(height: 12),
           TextField(
             controller: note,
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: 'Message (facultatif)',
+              labelText: tr('Message (facultatif)'),
               hintText: widget.accept
-                  ? 'Ex. : je vous propose une visite samedi.'
-                  : 'Ex. : le bien vient d’être loué.',
+                  ? tr('Ex. : je vous propose une visite samedi.')
+                  : tr('Ex. : le bien vient d’être loué.'),
             ),
           ),
         ],
@@ -282,13 +286,13 @@ class _ResponseDialogState extends State<_ResponseDialog> {
       actions: [
         TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler')),
+            child: Text(tr('Annuler'))),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(note.text.trim()),
           style: widget.accept
               ? null
               : FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-          child: Text(widget.accept ? 'Accepter' : 'Refuser'),
+          child: Text(widget.accept ? tr('Accepter') : tr('Refuser')),
         ),
       ],
     );

@@ -19,7 +19,7 @@ class InterestRequestTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: IvoryColors.green.withOpacity(0.12),
-          child: const Icon(Icons.person_outline, color: IvoryColors.green),
+          child: Icon(Icons.person_outline, color: IvoryColors.green),
         ),
         title: Text(request.applicantName,
             style: const TextStyle(fontWeight: FontWeight.w800)),

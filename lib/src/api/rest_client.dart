@@ -51,11 +51,13 @@ Future<Map<String, dynamic>> sendRest(http.BaseRequest request,
     // 403 here means "not your listing", not an expired session.
     final message = payload?['error'] as String?;
     throw ServerException(
-        message ?? 'Erreur du serveur (HTTP ${response.statusCode}).',
+        message ??
+            tr('Erreur du serveur (HTTP {status}).',
+                {'status': response.statusCode}),
         statusCode: response.statusCode);
   }
   if (payload == null) {
-    throw ServerException('Réponse inattendue du serveur.',
+    throw ServerException(tr('Réponse inattendue du serveur.'),
         statusCode: response.statusCode);
   }
   return payload;

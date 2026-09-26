@@ -118,12 +118,12 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
   }
 
   String? _required(String? value) =>
-      (value == null || value.trim().isEmpty) ? 'Champ obligatoire' : null;
+      (value == null || value.trim().isEmpty) ? tr('Champ obligatoire') : null;
 
   String? _number(String? value, {bool required = true}) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return required ? 'Champ obligatoire' : null;
-    return int.tryParse(text) == null ? 'Nombre entier attendu' : null;
+    if (text.isEmpty) return required ? tr('Champ obligatoire') : null;
+    return int.tryParse(text) == null ? tr('Nombre entier attendu') : null;
   }
 
   InputDecoration _decoration(String label, IconData icon, {String? suffix}) =>
@@ -135,7 +135,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     final digitsOnly = [FilteringTextInputFormatter.digitsOnly];
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNew ? 'Ajouter un bien' : 'Modifier les informations'),
+        title: Text(
+            _isNew ? tr('Ajouter un bien') : tr('Modifier les informations')),
       ),
       body: SafeArea(
         child: Form(
@@ -146,13 +147,13 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               TextFormField(
                 controller: _title,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: _decoration('Titre de l’annonce', Icons.title),
+                decoration: _decoration(tr('Titre de l’annonce'), Icons.title),
                 validator: _required,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _categoryId,
-                decoration: _decoration('Catégorie', Icons.sell_outlined),
+                decoration: _decoration(tr('Catégorie'), Icons.sell_outlined),
                 items: [
                   for (final category in _categories)
                     DropdownMenuItem(
@@ -160,14 +161,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 ],
                 onChanged: (value) => setState(() => _categoryId = value),
                 validator: (value) =>
-                    value == null ? 'Choisissez une catégorie' : null,
+                    value == null ? tr('Choisissez une catégorie') : null,
               ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
                   child: TextFormField(
                     controller: _city,
-                    decoration: _decoration('Ville', Icons.location_city),
+                    decoration: _decoration(tr('Ville'), Icons.location_city),
                     validator: _required,
                   ),
                 ),
@@ -175,7 +176,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 Expanded(
                   child: TextFormField(
                     controller: _district,
-                    decoration: _decoration('Quartier', Icons.place_outlined),
+                    decoration:
+                        _decoration(tr('Quartier'), Icons.place_outlined),
                     validator: _required,
                   ),
                 ),
@@ -187,7 +189,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                     controller: _rooms,
                     keyboardType: TextInputType.number,
                     inputFormatters: digitsOnly,
-                    decoration: _decoration('Pièces', Icons.bed_outlined),
+                    decoration: _decoration(tr('Pièces'), Icons.bed_outlined),
                     validator: _number,
                   ),
                 ),
@@ -204,29 +206,29 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 ),
               ]),
               const SizedBox(height: 16),
-              const Text('Type de location',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(tr('Type de location'),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               SegmentedButton<RentalType>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                       value: RentalType.longTerm,
-                      icon: Icon(Icons.calendar_month),
-                      label: Text('Au mois')),
+                      icon: const Icon(Icons.calendar_month),
+                      label: Text(tr('Au mois'))),
                   ButtonSegment(
                       value: RentalType.shortTerm,
-                      icon: Icon(Icons.nights_stay),
-                      label: Text('Courte durée')),
+                      icon: const Icon(Icons.nights_stay),
+                      label: Text(tr('Courte durée'))),
                 ],
                 selected: {_rentalType},
                 onSelectionChanged: (selection) =>
                     setState(() => _rentalType = selection.first),
               ),
               if (_rentalType == RentalType.shortTerm)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
                   child: MutedText(
-                      'Appartement meublé loué à la nuit ou à la semaine.'),
+                      tr('Appartement meublé loué à la nuit ou à la semaine.')),
                 ),
               const SizedBox(height: 12),
               TextFormField(
@@ -235,8 +237,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 inputFormatters: digitsOnly,
                 decoration: _decoration(
                     _rentalType == RentalType.shortTerm
-                        ? 'Prix par nuit'
-                        : 'Loyer mensuel',
+                        ? tr('Prix par nuit')
+                        : tr('Loyer mensuel'),
                     Icons.payments,
                     suffix: 'FCFA'),
                 validator: _number,
@@ -248,7 +250,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   keyboardType: TextInputType.number,
                   inputFormatters: digitsOnly,
                   decoration: _decoration(
-                      'Prix par semaine (facultatif)', Icons.date_range,
+                      tr('Prix par semaine (facultatif)'), Icons.date_range,
                       suffix: 'FCFA'),
                   validator: (value) => _number(value, required: false),
                 ),
@@ -256,7 +258,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _status,
-                decoration: _decoration('Statut', Icons.flag_outlined),
+                decoration: _decoration(tr('Statut'), Icons.flag_outlined),
                 items: [
                   for (final entry in listingStatusLabels.entries)
                     DropdownMenuItem(
@@ -265,10 +267,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 onChanged: (value) =>
                     setState(() => _status = value ?? 'available'),
               ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
-                child: MutedText(
-                    'Seuls les biens « Disponible » apparaissent dans la recherche des locataires.'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+                child: MutedText(tr(
+                    'Seuls les biens « Disponible » apparaissent dans la recherche des locataires.')),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -276,10 +278,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 minLines: 4,
                 maxLines: 8,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description',
                   alignLabelWithHint: true,
-                  hintText: 'Points forts, équipements, proximité…',
+                  hintText: tr('Points forts, équipements, proximité…'),
                 ),
               ),
               if (_error != null) ...[
@@ -290,23 +292,23 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: _saving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2, color: IvoryColors.onPrimary))
                     : Icon(_isNew ? Icons.add_home_outlined : Icons.save),
                 label: Text(_saving
-                    ? 'Enregistrement…'
+                    ? tr('Enregistrement…')
                     : _isNew
-                        ? 'Créer le bien'
-                        : 'Enregistrer'),
+                        ? tr('Créer le bien')
+                        : tr('Enregistrer')),
               ),
               if (_isNew)
-                const Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: MutedText(
-                      'Vous pourrez ajouter les photos et la vidéo juste après.'),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: MutedText(tr(
+                      'Vous pourrez ajouter les photos et la vidéo juste après.')),
                 ),
             ],
           ),

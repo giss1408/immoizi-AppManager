@@ -55,14 +55,14 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: IvoryColors.green,
-        foregroundColor: Colors.white,
+        foregroundColor: IvoryColors.onPrimary,
         title: Text(current.title),
         actions: [
           if (canEdit)
             IconButton(
               onPressed: _openEditSheet,
               icon: const Icon(Icons.edit),
-              tooltip: 'Modifier l\u2019annonce',
+              tooltip: tr('Modifier l\u2019annonce'),
             ),
         ],
       ),
@@ -94,8 +94,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 const SizedBox(height: 16),
                 MutedText(
                   current.id == null
-                      ? 'Mode démonstration : connectez-vous comme bailleur et synchronisez une annonce réelle pour téléverser des photos ou une vidéo.'
-                      : 'Connectez-vous en tant que bailleur pour modifier cette annonce.',
+                      ? tr(
+                          'Mode démonstration : connectez-vous comme bailleur et synchronisez une annonce réelle pour téléverser des photos ou une vidéo.')
+                      : tr(
+                          'Connectez-vous en tant que bailleur pour modifier cette annonce.'),
                 ),
               ],
             ],
@@ -196,13 +198,15 @@ class PropertyDetails extends StatelessWidget {
                 label: property.rentalType.label),
             DetailChip(
                 icon: Icons.meeting_room,
-                label: '${property.rooms} pi\u00e8ces'),
+                label: tr('{count} pièces', {'count': property.rooms})),
             DetailChip(
                 icon: Icons.square_foot, label: '${property.surface} m\u00b2'),
-            DetailChip(icon: Icons.verified, label: property.status),
+            DetailChip(
+                icon: Icons.verified,
+                label: listingStatusLabel(property.status)),
             if (property.hasVideo)
-              const DetailChip(
-                  icon: Icons.videocam, label: 'Vid\u00e9o disponible'),
+              DetailChip(
+                  icon: Icons.videocam, label: tr('Vid\u00e9o disponible')),
           ],
         ),
         if (property.description.isNotEmpty) ...[
@@ -213,8 +217,7 @@ class PropertyDetails extends StatelessWidget {
                   .titleSmall
                   ?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text(property.description,
-              style: const TextStyle(color: Colors.black87)),
+          Text(property.description, style: TextStyle(color: IvoryColors.ink)),
         ],
         if (property.videoUrl != null) ...[
           const SizedBox(height: 12),

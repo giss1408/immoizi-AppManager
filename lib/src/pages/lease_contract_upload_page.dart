@@ -18,9 +18,9 @@ class ContractUploadCard extends StatelessWidget {
     return Card(
       color: IvoryColors.green.withOpacity(0.08),
       child: ListTile(
-        leading: const Icon(Icons.upload_file, color: IvoryColors.green),
-        title: const Text('Ajouter un contrat de location'),
-        subtitle: const Text('Associer un bail à une propriété louée'),
+        leading: Icon(Icons.upload_file, color: IvoryColors.green),
+        title: Text(tr('Ajouter un contrat de location')),
+        subtitle: Text(tr('Associer un bail à une propriété louée')),
         onTap: editContext.canEdit
             ? () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -47,7 +47,8 @@ class LeaseContractUploadPage extends StatefulWidget {
 }
 
 class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
-  final titleController = TextEditingController(text: 'Contrat de location');
+  final titleController =
+      TextEditingController(text: tr('Contrat de location'));
   String? propertyId;
   PlatformFile? selectedFile;
   bool uploading = false;
@@ -69,8 +70,8 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
     if (propertyId == null ||
         selectedFile?.path == null ||
         titleController.text.trim().isEmpty) {
-      setState(
-          () => error = 'Choisissez une propriété, un titre et un fichier.');
+      setState(() =>
+          error = tr('Choisissez une propriété, un titre et un fichier.'));
       return;
     }
     setState(() {
@@ -91,8 +92,8 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
         Navigator.of(context).pop();
       }
     } catch (exception) {
-      setState(() => error =
-          'Contrat impossible à téléverser : ${describeError(exception)}');
+      setState(() => error = tr('Contrat impossible à téléverser : {error}',
+          {'error': describeError(exception)}));
     } finally {
       if (mounted) setState(() => uploading = false);
     }
@@ -101,13 +102,13 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajouter un contrat')),
+      appBar: AppBar(title: Text(tr('Ajouter un contrat'))),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           DropdownButtonFormField<String>(
             value: propertyId,
-            decoration: const InputDecoration(labelText: 'Propriété louée'),
+            decoration: InputDecoration(labelText: tr('Propriété louée')),
             items: widget.properties
                 .where((property) => property.id != null)
                 .map((property) => DropdownMenuItem(
@@ -118,13 +119,14 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
           const SizedBox(height: 12),
           TextField(
             controller: titleController,
-            decoration: const InputDecoration(labelText: 'Titre du document'),
+            decoration: InputDecoration(labelText: tr('Titre du document')),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: uploading ? null : _selectFile,
             icon: const Icon(Icons.attach_file),
-            label: Text(selectedFile?.name ?? 'Choisir le fichier du contrat'),
+            label:
+                Text(selectedFile?.name ?? tr('Choisir le fichier du contrat')),
           ),
           const SizedBox(height: 20),
           FilledButton.icon(
@@ -133,8 +135,9 @@ class _LeaseContractUploadPageState extends State<LeaseContractUploadPage> {
                 ? const SizedBox(
                     width: 18, height: 18, child: CircularProgressIndicator())
                 : const Icon(Icons.cloud_upload),
-            label:
-                Text(uploading ? 'Téléversement...' : 'Téléverser le contrat'),
+            label: Text(uploading
+                ? tr('Téléversement...')
+                : tr('Téléverser le contrat')),
           ),
           if (error != null) ...[
             const SizedBox(height: 12),

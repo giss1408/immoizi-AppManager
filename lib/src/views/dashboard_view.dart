@@ -46,9 +46,9 @@ class ManagerDashboardView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader('Mes biens',
+        SectionHeader(tr('Mes biens'),
             count: properties.length,
-            subtitle: 'Annonces et biens de votre portefeuille'),
+            subtitle: tr('Annonces et biens de votre portefeuille')),
         if (onRentalTypeChanged != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
@@ -61,7 +61,7 @@ class ManagerDashboardView extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () => _addProperty(context),
               icon: const Icon(Icons.add_home_outlined),
-              label: const Text('Ajouter un bien'),
+              label: Text(tr('Ajouter un bien')),
             ),
           ),
         GroupedPropertyList(
@@ -89,9 +89,9 @@ class MetricGrid extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        MetricCard('Biens', dashboard.properties.length, Icons.apartment),
-        MetricCard('Baux', dashboard.leases.length, Icons.assignment),
-        MetricCard('Paiements', dashboard.payments.length, Icons.payments),
+        MetricCard(tr('Biens'), dashboard.properties.length, Icons.apartment),
+        MetricCard(tr('Baux'), dashboard.leases.length, Icons.assignment),
+        MetricCard(tr('Paiements'), dashboard.payments.length, Icons.payments),
         MetricCard('Maintenance', dashboard.maintenance.length, Icons.build),
       ],
     );
@@ -110,7 +110,7 @@ class MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: IvoryColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: IvoryColors.border),
       ),
@@ -136,7 +136,7 @@ class MetricCard extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 24, fontWeight: FontWeight.w900)),
                 Text(label,
-                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    style: TextStyle(fontSize: 11, color: IvoryColors.muted),
                     overflow: TextOverflow.ellipsis),
               ],
             ),

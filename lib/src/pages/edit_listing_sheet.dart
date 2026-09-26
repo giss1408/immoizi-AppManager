@@ -36,8 +36,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
 
   Future<void> _pickAndUpload({required bool isVideo}) async {
     if (current.id == null || widget.editContext.token.isEmpty) {
-      setState(() => error =
-          'Mode démo : connectez-vous comme bailleur et synchronisez une annonce réelle avant de téléverser des médias.');
+      setState(() => error = tr(
+          'Mode démo : connectez-vous comme bailleur et synchronisez une annonce réelle avant de téléverser des médias.'));
       return;
     }
 
@@ -45,8 +45,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
     if (!isVideo) {
       slot = _nextImageSlot();
       if (slot == null) {
-        setState(
-            () => error = 'Maximum de 5 photos atteint pour cette annonce.');
+        setState(() =>
+            error = tr('Maximum de 5 photos atteint pour cette annonce.'));
         return;
       }
     }
@@ -72,11 +72,11 @@ class _EditListingSheetState extends State<EditListingSheet> {
       if (isVideo) {
         contentType = videoMediaType(file.path);
         if (contentType == null) {
-          throw const ServerException(
-              'Format vidéo non pris en charge (MP4, WebM ou MOV).');
+          throw ServerException(
+              tr('Format vidéo non pris en charge (MP4, WebM ou MOV).'));
         }
         if (await file.length() > maxVideoBytes) {
-          throw const ServerException('Vidéo trop lourde (10 Mo maximum).');
+          throw ServerException(tr('Vidéo trop lourde (10 Mo maximum).'));
         }
       }
 
@@ -108,8 +108,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
       });
     } catch (exception) {
       if (mounted) {
-        setState(() =>
-            error = 'Téléchargement impossible : ${describeError(exception)}');
+        setState(() => error = tr('Téléchargement impossible : {error}',
+            {'error': describeError(exception)}));
       }
     } finally {
       if (mounted) {
@@ -123,8 +123,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
 
   Future<void> _deleteMedia({required String slot}) async {
     if (current.id == null || widget.editContext.token.isEmpty) {
-      setState(() => error =
-          'Mode démo : connectez-vous comme bailleur pour supprimer ce média.');
+      setState(() => error = tr(
+          'Mode démo : connectez-vous comme bailleur pour supprimer ce média.'));
       return;
     }
 
@@ -159,8 +159,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
       });
     } catch (exception) {
       if (mounted) {
-        setState(() =>
-            error = 'Suppression impossible : ${describeError(exception)}');
+        setState(() => error = tr('Suppression impossible : {error}',
+            {'error': describeError(exception)}));
       }
     } finally {
       if (mounted) setState(() => deletingMedia = false);
@@ -203,7 +203,7 @@ class _EditListingSheetState extends State<EditListingSheet> {
               errorBuilder: (context, error, stackTrace) => Container(
                 width: 64,
                 height: 64,
-                color: const Color(0xFFFFE8E8),
+                color: Colors.redAccent.withOpacity(0.12),
                 child: const Icon(Icons.broken_image_outlined,
                     color: Colors.redAccent, size: 24),
               ),
@@ -221,7 +221,7 @@ class _EditListingSheetState extends State<EditListingSheet> {
                 minimumSize: const Size(22, 22),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              tooltip: 'Supprimer la photo',
+              tooltip: tr('Supprimer la photo'),
             ),
           ),
         ],
@@ -243,7 +243,7 @@ class _EditListingSheetState extends State<EditListingSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Modifier l\u2019annonce',
+            Text(tr('Modifier l\u2019annonce'),
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
@@ -252,16 +252,16 @@ class _EditListingSheetState extends State<EditListingSheet> {
             OutlinedButton.icon(
               onPressed: _editDetails,
               icon: const Icon(Icons.edit_note),
-              label: const Text('Modifier les informations'),
+              label: Text(tr('Modifier les informations')),
               style: OutlinedButton.styleFrom(
                   foregroundColor: IvoryColors.green,
-                  side: const BorderSide(color: IvoryColors.green)),
+                  side: BorderSide(color: IvoryColors.green)),
             ),
             const SizedBox(height: 6),
-            const MutedText(
-                'Titre, catégorie, adresse, pièces, surface, loyer, statut et description.'),
+            MutedText(tr(
+                'Titre, catégorie, adresse, pièces, surface, loyer, statut et description.')),
             const SizedBox(height: 20),
-            Text('Photos & vidéo',
+            Text(tr('Photos & vidéo'),
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -295,18 +295,18 @@ class _EditListingSheetState extends State<EditListingSheet> {
             if (current.videoUrl != null) ...[
               Row(
                 children: [
-                  const Icon(Icons.videocam, color: IvoryColors.green),
+                  Icon(Icons.videocam, color: IvoryColors.green),
                   const SizedBox(width: 8),
-                  const Expanded(
-                      child: Text('Vidéo de présentation',
-                          style: TextStyle(fontWeight: FontWeight.w700))),
+                  Expanded(
+                      child: Text(tr('Vidéo de présentation'),
+                          style: const TextStyle(fontWeight: FontWeight.w700))),
                   IconButton(
                     onPressed: deletingMedia
                         ? null
                         : () => _deleteMedia(slot: 'video'),
                     icon: const Icon(Icons.delete_outline,
                         color: Colors.redAccent),
-                    tooltip: 'Supprimer la vidéo',
+                    tooltip: tr('Supprimer la vidéo'),
                   ),
                 ],
               ),
@@ -326,7 +326,8 @@ class _EditListingSheetState extends State<EditListingSheet> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.photo_camera),
-                    label: Text('Photo ($_imageCount/5)'),
+                    label:
+                        Text(tr('Photo ({count}/5)', {'count': _imageCount})),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -341,7 +342,7 @@ class _EditListingSheetState extends State<EditListingSheet> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.videocam),
-                    label: const Text('Vid\u00e9o'),
+                    label: Text(tr('Vid\u00e9o')),
                   ),
                 ),
               ],
@@ -353,7 +354,7 @@ class _EditListingSheetState extends State<EditListingSheet> {
             const SizedBox(height: 10),
             TextButton(
               onPressed: () => Navigator.of(context).pop(current),
-              child: const Text('Fermer'),
+              child: Text(tr('Fermer')),
             ),
           ],
         ),

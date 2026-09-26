@@ -1,0 +1,136 @@
+/// English for the manager app's French strings.
+const managerEnglish = <String, String>{
+  'Accepter': 'Accept',
+  'Accepter la demande ?': 'Accept the request?',
+  'Affinez les biens qui vous intéressent.':
+      'Refine the properties you are interested in.',
+  'Ajouter un bien': 'Add a property',
+  'Ajouter un contrat': 'Add a contract',
+  'Ajouter un contrat de location': 'Add a lease contract',
+  'Annonces et biens de votre portefeuille':
+      'Listings and properties in your portfolio',
+  'Annuler': 'Cancel',
+  'Annulée': 'Cancelled',
+  'Appartement meublé loué à la nuit ou à la semaine.':
+      'Furnished apartment rented by the night or the week.',
+  'Associer un bail à une propriété louée':
+      'Attach a lease to a rented property',
+  'Au mois': 'Monthly',
+  'Aucun message initial.': 'No initial message.',
+  'Bailleur': 'Landlord',
+  'Bailleur / Gestionnaire': 'Landlord / Manager',
+  'Baux': 'Leases',
+  'Biens': 'Properties',
+  'Catégorie': 'Category',
+  'Champ obligatoire': 'Required field',
+  'Charger le portefeuille': 'Load portfolio',
+  'Choisir le fichier du contrat': 'Choose the contract file',
+  'Choisissez une catégorie': 'Choose a category',
+  'Choisissez une propriété, un titre et un fichier.':
+      'Choose a property, a title and a file.',
+  'Connectez-vous en tant que bailleur pour modifier cette annonce.':
+      'Sign in as a landlord to edit this listing.',
+  'Contrat de location': 'Lease contract',
+  'Contrat impossible à téléverser : {error}':
+      'Unable to upload the contract: {error}',
+  'Courte durée': 'Short stay',
+  'Créer le bien': 'Create the property',
+  'Demande acceptée — {name} est notifié.':
+      'Request accepted — {name} has been notified.',
+  'Demande de location': 'Rental request',
+  'Demande refusée — {name} est notifié.':
+      'Request refused — {name} has been notified.',
+  'Demandes d\'intérêt': 'Interest requests',
+  'Description du problème': 'Problem description',
+  'Début {date} • {amount}': 'Starts {date} • {amount}',
+  'Employeur': 'Employer',
+  'En cours': 'In progress',
+  'Enregistrement...': 'Saving...',
+  'Enregistrement…': 'Saving…',
+  'Enregistrer': 'Save',
+  'Entrée souhaitée': 'Desired move-in',
+  'Erreur du serveur (HTTP {status}).': 'Server error (HTTP {status}).',
+  'Ex. : je vous propose une visite samedi.':
+      'E.g.: how about a visit on Saturday?',
+  'Ex. : le bien vient d’être loué.':
+      'E.g.: the property has just been rented.',
+  'Faible': 'Low',
+  'Fermer': 'Close',
+  'Format vidéo non pris en charge (MP4, WebM ou MOV).':
+      'Unsupported video format (MP4, WebM or MOV).',
+  'Haute': 'High',
+  'Loyer mensuel': 'Monthly rent',
+  'Maximum de 5 photos atteint pour cette annonce.':
+      'This listing already has the maximum of 5 photos.',
+  'Mes biens': 'My properties',
+  'Message (facultatif)': 'Message (optional)',
+  'Mode démo : connectez-vous comme bailleur et synchronisez une annonce réelle avant de téléverser des médias.':
+      'Demo mode: sign in as a landlord and sync a real listing before uploading media.',
+  'Mode démo : connectez-vous comme bailleur pour supprimer ce média.':
+      'Demo mode: sign in as a landlord to delete this media.',
+  'Mode démonstration : connectez-vous comme bailleur et synchronisez une annonce réelle pour téléverser des photos ou une vidéo.':
+      'Demo mode: sign in as a landlord and sync a real listing to upload photos or a video.',
+  'Modification impossible : {error}': 'Unable to save changes: {error}',
+  'Modifier la maintenance': 'Edit maintenance',
+  'Modifier les informations': 'Edit details',
+  'Modifier l’annonce': 'Edit listing',
+  'Mon espace': 'My space',
+  'Nombre entier attendu': 'Whole number expected',
+  'Normale': 'Normal',
+  'Outils et suivi de votre portefeuille':
+      'Tools and tracking for your portfolio',
+  'Ouverte': 'Open',
+  'Paiements': 'Payments',
+  'Photo ({count}/5)': 'Photo ({count}/5)',
+  'Photos & vidéo': 'Photos & video',
+  'Pièces': 'Rooms',
+  'Points forts, équipements, proximité…':
+      'Highlights, amenities, nearby places…',
+  'Portefeuille': 'Portfolio',
+  'Portefeuille bailleur': 'Landlord portfolio',
+  'Priorité': 'Priority',
+  'Prix par nuit': 'Price per night',
+  'Prix par semaine (facultatif)': 'Price per week (optional)',
+  'Proposer une visite': 'Propose a visit',
+  'Propriété louée': 'Rented property',
+  'Quartier': 'Neighbourhood',
+  'Rapports & statistiques': 'Reports & statistics',
+  'Rechercher une annonce...': 'Search listings...',
+  'Refuser': 'Refuse',
+  'Refuser la demande ?': 'Refuse the request?',
+  'Revenus mensuels': 'Monthly income',
+  'Réponse inattendue du serveur.': 'Unexpected server response.',
+  'Résolue': 'Resolved',
+  'Seuls les biens « Disponible » apparaissent dans la recherche des locataires.':
+      'Only “Available” properties appear in tenants’ searches.',
+  'Statut': 'Status',
+  'Sujet': 'Subject',
+  'Suppression impossible : {error}': 'Unable to delete: {error}',
+  'Supprimer la notification': 'Delete notification',
+  'Supprimer la photo': 'Delete photo',
+  'Supprimer la vidéo': 'Delete video',
+  'Tableau de bord': 'Dashboard',
+  'Titre de l’annonce': 'Listing title',
+  'Titre du document': 'Document title',
+  'Titre, catégorie, adresse, pièces, surface, loyer, statut et description.':
+      'Title, category, address, rooms, surface, rent, status and description.',
+  'Type de location': 'Rental type',
+  'Téléchargement impossible : {error}': 'Unable to upload: {error}',
+  'Téléversement...': 'Uploading...',
+  'Téléverser le contrat': 'Upload the contract',
+  'Urgente': 'Urgent',
+  'Vidéo': 'Video',
+  'Vidéo de présentation': 'Presentation video',
+  'Vidéo disponible': 'Video available',
+  'Vidéo trop lourde (10 Mo maximum).': 'Video too large (10 MB maximum).',
+  'Ville': 'City',
+  'Vous pourrez ajouter les photos et la vidéo juste après.':
+      'You can add photos and a video right after.',
+  '{count} pièces': '{count} rooms',
+  '{name}\n{profession} • {count} occupant(s)':
+      '{name}\n{profession} • {count} occupant(s)',
+  '{name} sera notifié.': '{name} will be notified.',
+  '{property} • {profession} • {count} occupant(s)':
+      '{property} • {profession} • {count} occupant(s)',
+  'Équipe & rôles': 'Team & roles',
+};

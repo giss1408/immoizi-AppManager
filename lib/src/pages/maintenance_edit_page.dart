@@ -56,8 +56,8 @@ class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
         Navigator.of(context).pop();
       }
     } catch (exception) {
-      setState(() =>
-          error = 'Modification impossible : ${describeError(exception)}');
+      setState(() => error = tr('Modification impossible : {error}',
+          {'error': describeError(exception)}));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -66,7 +66,7 @@ class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Modifier la maintenance')),
+      appBar: AppBar(title: Text(tr('Modifier la maintenance'))),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -75,35 +75,36 @@ class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
           const SizedBox(height: 12),
           TextField(
               controller: titleController,
-              decoration: const InputDecoration(labelText: 'Sujet')),
+              decoration: InputDecoration(labelText: tr('Sujet'))),
           const SizedBox(height: 12),
           TextField(
             controller: descriptionController,
             maxLines: 5,
             decoration:
-                const InputDecoration(labelText: 'Description du problème'),
+                InputDecoration(labelText: tr('Description du problème')),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: priority,
-            decoration: const InputDecoration(labelText: 'Priorité'),
-            items: const [
-              DropdownMenuItem(value: 'low', child: Text('Faible')),
-              DropdownMenuItem(value: 'normal', child: Text('Normale')),
-              DropdownMenuItem(value: 'high', child: Text('Haute')),
-              DropdownMenuItem(value: 'urgent', child: Text('Urgente')),
+            decoration: InputDecoration(labelText: tr('Priorité')),
+            items: [
+              DropdownMenuItem(value: 'low', child: Text(tr('Faible'))),
+              DropdownMenuItem(value: 'normal', child: Text(tr('Normale'))),
+              DropdownMenuItem(value: 'high', child: Text(tr('Haute'))),
+              DropdownMenuItem(value: 'urgent', child: Text(tr('Urgente'))),
             ],
             onChanged: (value) => setState(() => priority = value ?? priority),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: status,
-            decoration: const InputDecoration(labelText: 'Statut'),
-            items: const [
-              DropdownMenuItem(value: 'open', child: Text('Ouverte')),
-              DropdownMenuItem(value: 'in_progress', child: Text('En cours')),
-              DropdownMenuItem(value: 'resolved', child: Text('Résolue')),
-              DropdownMenuItem(value: 'cancelled', child: Text('Annulée')),
+            decoration: InputDecoration(labelText: tr('Statut')),
+            items: [
+              DropdownMenuItem(value: 'open', child: Text(tr('Ouverte'))),
+              DropdownMenuItem(
+                  value: 'in_progress', child: Text(tr('En cours'))),
+              DropdownMenuItem(value: 'resolved', child: Text(tr('Résolue'))),
+              DropdownMenuItem(value: 'cancelled', child: Text(tr('Annulée'))),
             ],
             onChanged: (value) => setState(() => status = value ?? status),
           ),
@@ -114,7 +115,7 @@ class _MaintenanceEditPageState extends State<MaintenanceEditPage> {
                 ? const SizedBox(
                     width: 18, height: 18, child: CircularProgressIndicator())
                 : const Icon(Icons.save),
-            label: Text(saving ? 'Enregistrement...' : 'Enregistrer'),
+            label: Text(saving ? tr('Enregistrement...') : tr('Enregistrer')),
           ),
           if (error != null) ...[
             const SizedBox(height: 12),

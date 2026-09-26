@@ -47,8 +47,8 @@ class NotificationTile extends StatelessWidget {
     } catch (exception) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('Suppression impossible : ${describeError(exception)}')));
+            content: Text(tr('Suppression impossible : {error}',
+                {'error': describeError(exception)}))));
       }
     }
   }
@@ -68,7 +68,7 @@ class NotificationTile extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(
           '${notification.message}\n${notification.propertyTitle}\n'
-          '${notification.interestMessage.isEmpty ? 'Aucun message initial.' : notification.interestMessage}',
+          '${notification.interestMessage.isEmpty ? tr('Aucun message initial.') : notification.interestMessage}',
           maxLines: 4,
           overflow: TextOverflow.ellipsis,
         ),
@@ -79,12 +79,12 @@ class NotificationTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!notification.isRead)
-              const Icon(Icons.circle, size: 10, color: IvoryColors.orange),
+              Icon(Icons.circle, size: 10, color: IvoryColors.orange),
             IconButton(
               onPressed: () => _delete(context),
               icon: const Icon(Icons.delete_outline),
               color: Colors.redAccent,
-              tooltip: 'Supprimer la notification',
+              tooltip: tr('Supprimer la notification'),
             ),
           ],
         ),
@@ -103,15 +103,14 @@ class UnreadNotificationsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: const Color(0xFFFFF4E5),
+      color: IvoryColors.orange.withOpacity(0.1),
       child: ListTile(
-        leading:
-            const Icon(Icons.notifications_active, color: IvoryColors.orange),
+        leading: Icon(Icons.notifications_active, color: IvoryColors.orange),
         title: Text(notifications.first.title,
             style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(
           '${notifications.first.message}\n${notifications.first.propertyTitle}\n'
-          '${notifications.first.interestMessage.isEmpty ? 'Aucun message initial.' : notifications.first.interestMessage}',
+          '${notifications.first.interestMessage.isEmpty ? tr('Aucun message initial.') : notifications.first.interestMessage}',
           maxLines: 4,
           overflow: TextOverflow.ellipsis,
         ),

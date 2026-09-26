@@ -14,7 +14,8 @@ class LeaseTile extends StatelessWidget {
   Widget build(BuildContext context) => InfoTile(
         icon: Icons.assignment_turned_in,
         title: lease.propertyTitle,
-        subtitle: 'Début ${lease.startDate} • ${lease.rentAmount} FCFA',
+        subtitle: tr('Début {date} • {amount}',
+            {'date': lease.startDate, 'amount': '${lease.rentAmount} FCFA'}),
         trailing: lease.status,
       );
 }
@@ -47,8 +48,9 @@ class MaintenanceTile extends StatelessWidget {
         leading: Icon(Icons.construction,
             color: Theme.of(context).colorScheme.primary),
         title: Text(request.title),
-        subtitle: Text('${request.propertyTitle} • ${request.priority}'),
-        trailing: Text(request.status),
+        subtitle: Text(
+            '${request.propertyTitle} • ${maintenanceLabel(request.priority)}'),
+        trailing: Text(maintenanceLabel(request.status)),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) =>
@@ -72,3 +74,16 @@ class DocumentTile extends StatelessWidget {
         subtitle: '${document.propertyTitle} • ${document.type}',
       );
 }
+
+/// Label for a maintenance priority or status code, in the active language.
+String maintenanceLabel(String code) => tr(const {
+      'low': 'Faible',
+      'normal': 'Normale',
+      'high': 'Haute',
+      'urgent': 'Urgente',
+      'open': 'Ouverte',
+      'in_progress': 'En cours',
+      'resolved': 'Résolue',
+      'cancelled': 'Annulée',
+    }[code] ??
+    code);

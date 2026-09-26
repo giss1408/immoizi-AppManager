@@ -71,27 +71,29 @@ class _ManagerHomePageState extends State<ManagerHomePage>
     final onMySpace = tab == 1;
     return Scaffold(
       drawer: AppDrawer(
-        name: username.text.trim().isEmpty ? 'Bailleur' : username.text.trim(),
-        role: 'Bailleur / Gestionnaire',
+        name: username.text.trim().isEmpty
+            ? tr('Bailleur')
+            : username.text.trim(),
+        role: tr('Bailleur / Gestionnaire'),
         connected: connected,
         onLogout: logout,
         applicationName: 'Immoizi Manager',
-        homeLabel: 'Tableau de bord',
-        extraComingSoonTiles: const [
+        homeLabel: tr('Tableau de bord'),
+        extraComingSoonTiles: [
           DrawerComingSoonTile(
-              icon: Icons.bar_chart, title: 'Rapports & statistiques'),
+              icon: Icons.bar_chart, title: tr('Rapports & statistiques')),
           DrawerComingSoonTile(
-              icon: Icons.groups_outlined, title: 'Équipe & rôles'),
+              icon: Icons.groups_outlined, title: tr('Équipe & rôles')),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: (index) => setState(() => tab = index),
         destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.apartment_outlined),
-            selectedIcon: Icon(Icons.apartment),
-            label: 'Portefeuille',
+          NavigationDestination(
+            icon: const Icon(Icons.apartment_outlined),
+            selectedIcon: const Icon(Icons.apartment),
+            label: tr('Portefeuille'),
           ),
           NavigationDestination(
             icon: Badge.count(
@@ -102,24 +104,24 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                 count: unread,
                 isLabelVisible: unread > 0,
                 child: const Icon(Icons.person)),
-            label: 'Mon espace',
+            label: tr('Mon espace'),
           ),
         ],
       ),
       body: Column(
         children: [
           AppHeader(
-            title: onMySpace ? 'Mon espace' : 'Immoizi Manager',
+            title: onMySpace ? tr('Mon espace') : 'Immoizi Manager',
             subtitle: onMySpace
-                ? 'Outils et suivi de votre portefeuille'
-                : 'Portefeuille bailleur',
+                ? tr('Outils et suivi de votre portefeuille')
+                : tr('Portefeuille bailleur'),
             icon: onMySpace ? Icons.person : Icons.business,
             connected: connected,
             online: online,
             connectedLabel: username.text.trim(),
             loading: loading,
             onRefresh: load,
-            refreshTooltip: 'Charger le portefeuille',
+            refreshTooltip: tr('Charger le portefeuille'),
             bottom: onMySpace
                 ? null
                 : PropertySearchBar(
@@ -127,7 +129,7 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                     onChanged: searchProperties,
                     activeFilterCount: filters.activeCount,
                     onOpenFilters: _showFilters,
-                    hintText: 'Rechercher une annonce...',
+                    hintText: tr('Rechercher une annonce...'),
                   ),
           ),
           Expanded(
@@ -217,11 +219,11 @@ class _ManagerHomePageState extends State<ManagerHomePage>
           onPressed: load,
           onLogin: login,
           onLogout: logout,
-          loadLabel: 'Charger le portefeuille'),
+          loadLabel: tr('Charger le portefeuille')),
       MetricGrid(dashboard: dashboard),
       // Requests and notifications first: they are what needs an answer.
       CategorySection(
-          title: "Demandes d'intérêt",
+          title: tr("Demandes d'intérêt"),
           icon: Icons.forum_outlined,
           count: dashboard.interestRequests.length,
           initiallyExpanded: dashboard.interestRequests.any((item) =>
@@ -243,7 +245,7 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                   request: _requestFor(item)))
               .toList()),
       CategorySection(
-          title: 'Baux',
+          title: tr('Baux'),
           icon: Icons.assignment,
           count: dashboard.leases.length,
           children: dashboard.leases.map(LeaseTile.new).toList()),
@@ -257,7 +259,7 @@ class _ManagerHomePageState extends State<ManagerHomePage>
                 properties: dashboard.properties, editContext: _editContext)
           ]),
       CategorySection(
-          title: 'Paiements',
+          title: tr('Paiements'),
           icon: Icons.payments,
           count: dashboard.payments.length,
           children: dashboard.payments.map(PaymentTile.new).toList()),
@@ -268,6 +270,8 @@ class _ManagerHomePageState extends State<ManagerHomePage>
           children: dashboard.maintenance
               .map((item) => MaintenanceTile(item, editContext: _editContext))
               .toList()),
+      const SizedBox(height: 4),
+      const PreferencesCard(),
     ];
   }
 
@@ -283,7 +287,7 @@ class _ManagerHomePageState extends State<ManagerHomePage>
             .toSet()
             .toList()
           ..sort(),
-        subtitle: 'Affinez les biens qui vous intéressent.',
+        subtitle: tr('Affinez les biens qui vous intéressent.'),
       ),
     );
     if (result != null && mounted) _applyFilters(result);
