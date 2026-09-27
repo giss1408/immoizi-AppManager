@@ -178,38 +178,6 @@ class DocumentItem {
       );
 }
 
-class NotificationItem {
-  NotificationItem(this.id, this.title, this.message, this.propertyTitle,
-      this.interestMessage, this.isRead, this.createdAt,
-      {this.interestRequestId});
-
-  /// Set when the notification is about an interest request.
-  final String? interestRequestId;
-
-  final String id;
-  final String title;
-  final String message;
-  final String propertyTitle;
-  final String interestMessage;
-  final bool isRead;
-  final String createdAt;
-
-  factory NotificationItem.fromJson(Map<String, dynamic> json) =>
-      NotificationItem(
-        json['id'] as String? ?? '',
-        json['title'] as String? ?? 'Notification',
-        json['message'] as String? ?? '',
-        nestedTitle(json['property']),
-        ((json['interestRequest'] as Map<String, dynamic>?)?['message']
-                as String?) ??
-            '',
-        json['isRead'] as bool? ?? false,
-        json['createdAt'] as String? ?? '',
-        interestRequestId: (json['interestRequest']
-            as Map<String, dynamic>?)?['id'] as String?,
-      );
-}
-
 class InterestRequestItem {
   InterestRequestItem(
       this.id,

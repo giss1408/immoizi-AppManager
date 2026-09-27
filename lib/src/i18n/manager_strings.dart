@@ -15,8 +15,6 @@ const managerEnglish = <String, String>{
       'Furnished apartment rented by the night or the week.',
   'Associer un bail à une propriété louée':
       'Attach a lease to a rented property',
-  'Au mois': 'Monthly',
-  'Aucun message initial.': 'No initial message.',
   'Bailleur': 'Landlord',
   'Bailleur / Gestionnaire': 'Landlord / Manager',
   'Baux': 'Leases',
@@ -33,7 +31,6 @@ const managerEnglish = <String, String>{
   'Contrat de location': 'Lease contract',
   'Contrat impossible à téléverser : {error}':
       'Unable to upload the contract: {error}',
-  'Courte durée': 'Short stay',
   'Créer le bien': 'Create the property',
   'Demande acceptée — {name} est notifié.':
       'Request accepted — {name} has been notified.',
@@ -49,13 +46,11 @@ const managerEnglish = <String, String>{
   'Enregistrement…': 'Saving…',
   'Enregistrer': 'Save',
   'Entrée souhaitée': 'Desired move-in',
-  'Erreur du serveur (HTTP {status}).': 'Server error (HTTP {status}).',
   'Ex. : je vous propose une visite samedi.':
       'E.g.: how about a visit on Saturday?',
   'Ex. : le bien vient d’être loué.':
       'E.g.: the property has just been rented.',
   'Faible': 'Low',
-  'Fermer': 'Close',
   'Format vidéo non pris en charge (MP4, WebM ou MOV).':
       'Unsupported video format (MP4, WebM or MOV).',
   'Haute': 'High',
@@ -74,7 +69,6 @@ const managerEnglish = <String, String>{
   'Modifier la maintenance': 'Edit maintenance',
   'Modifier les informations': 'Edit details',
   'Modifier l’annonce': 'Edit listing',
-  'Mon espace': 'My space',
   'Nombre entier attendu': 'Whole number expected',
   'Normale': 'Normal',
   'Outils et suivi de votre portefeuille':
@@ -91,7 +85,6 @@ const managerEnglish = <String, String>{
   'Priorité': 'Priority',
   'Prix par nuit': 'Price per night',
   'Prix par semaine (facultatif)': 'Price per week (optional)',
-  'Proposer une visite': 'Propose a visit',
   'Propriété louée': 'Rented property',
   'Quartier': 'Neighbourhood',
   'Rapports & statistiques': 'Reports & statistics',
@@ -99,14 +92,12 @@ const managerEnglish = <String, String>{
   'Refuser': 'Refuse',
   'Refuser la demande ?': 'Refuse the request?',
   'Revenus mensuels': 'Monthly income',
-  'Réponse inattendue du serveur.': 'Unexpected server response.',
   'Résolue': 'Resolved',
   'Seuls les biens « Disponible » apparaissent dans la recherche des locataires.':
       'Only “Available” properties appear in tenants’ searches.',
   'Statut': 'Status',
   'Sujet': 'Subject',
   'Suppression impossible : {error}': 'Unable to delete: {error}',
-  'Supprimer la notification': 'Delete notification',
   'Supprimer la photo': 'Delete photo',
   'Supprimer la vidéo': 'Delete video',
   'Tableau de bord': 'Dashboard',
@@ -120,13 +111,10 @@ const managerEnglish = <String, String>{
   'Téléverser le contrat': 'Upload the contract',
   'Urgente': 'Urgent',
   'Vidéo': 'Video',
-  'Vidéo de présentation': 'Presentation video',
-  'Vidéo disponible': 'Video available',
   'Vidéo trop lourde (10 Mo maximum).': 'Video too large (10 MB maximum).',
   'Ville': 'City',
   'Vous pourrez ajouter les photos et la vidéo juste après.':
       'You can add photos and a video right after.',
-  '{count} pièces': '{count} rooms',
   '{name}\n{profession} • {count} occupant(s)':
       '{name}\n{profession} • {count} occupant(s)',
   '{name} sera notifié.': '{name} will be notified.',

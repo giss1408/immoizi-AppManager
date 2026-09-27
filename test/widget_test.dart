@@ -7,10 +7,8 @@ import 'package:http/testing.dart';
 import 'package:immoizi_app_manager/main.dart';
 import 'package:immoizi_app_manager/src/api/rest_client.dart';
 import 'package:immoizi_core/immoizi_core.dart';
+import 'package:immoizi_core/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-http.Response _json(Object body) => http.Response(jsonEncode(body), 200,
-    headers: {'content-type': 'application/json; charset=utf-8'});
 
 Map<String, dynamic> _dashboard({List<Map<String, dynamic>>? notifications}) =>
     {
@@ -46,7 +44,7 @@ void main() {
     final requests = <http.Request>[];
     final client = GraphQLClient(httpClient: MockClient((request) async {
       requests.add(request);
-      return _json({'data': _dashboard()});
+      return jsonResponse({'data': _dashboard()});
     }));
     await tester.pumpWidget(ImmoiziManagerApp(client: client));
     await tester.pumpAndSettle();
@@ -62,7 +60,8 @@ void main() {
       (tester) async {
     FlutterSecureStorage.setMockInitialValues({'manager_token': 'tok'});
     final client = GraphQLClient(
-        httpClient: MockClient((_) async => _json({'data': _dashboard()})));
+        httpClient:
+            MockClient((_) async => jsonResponse({'data': _dashboard()})));
     await tester.pumpWidget(ImmoiziManagerApp(client: client));
     await tester.pumpAndSettle();
 
@@ -80,12 +79,12 @@ void main() {
       final query = (jsonDecode(request.body) as Map)['query'] as String;
       if (query.contains('NotificationsPoll')) {
         polls++;
-        return _json({
+        return jsonResponse({
           'data': {'notifications': notifications}
         });
       }
       dashboardLoads++;
-      return _json({'data': _dashboard(notifications: notifications)});
+      return jsonResponse({'data': _dashboard(notifications: notifications)});
     }));
     await tester.pumpWidget(ImmoiziManagerApp(client: client));
     await tester.pumpAndSettle();

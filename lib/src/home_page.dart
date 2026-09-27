@@ -35,19 +35,7 @@ class _ManagerHomePageState extends State<ManagerHomePage>
   @override
   final requiresLogin = true;
 
-  PropertyFilters filters = const PropertyFilters();
   int tab = 0;
-
-  @override
-  Map<String, Object?> get extraQueryVariables =>
-      {'rentalType': filters.rentalType?.apiValue};
-
-  /// Applies new filters; the rental type is filtered by the backend.
-  void _applyFilters(PropertyFilters next) {
-    final reload = next.rentalType != filters.rentalType;
-    setState(() => filters = next);
-    if (reload) load();
-  }
 
   @override
   ManagerDashboard parseDashboard(Map<String, dynamic> json) =>
@@ -58,18 +46,14 @@ class _ManagerHomePageState extends State<ManagerHomePage>
 
   @override
   Iterable<AppNotification> notificationsOf(ManagerDashboard dashboard) =>
-      dashboard.notifications.map((item) => AppNotification(
-          id: item.id,
-          title: item.title,
-          message: item.message,
-          isRead: item.isRead,
-          interestRequestId: item.interestRequestId));
+      dashboard.notifications;
 
   @override
   Widget build(BuildContext context) {
-    final unread = dashboard.notifications.where((item) => !item.isRead).length;
+    final unread =
+        dashboard.notifications.where((item) => !item.isRead).toList();
     final onMySpace = tab == 1;
-    return Scaffold(
+    return DashboardScaffold(
       drawer: AppDrawer(
         name: username.text.trim().isEmpty
             ? tr('Bailleur')
@@ -86,110 +70,59 @@ class _ManagerHomePageState extends State<ManagerHomePage>
               icon: Icons.groups_outlined, title: tr('Équipe & rôles')),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (index) => setState(() => tab = index),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.apartment_outlined),
-            selectedIcon: const Icon(Icons.apartment),
-            label: tr('Portefeuille'),
-          ),
-          NavigationDestination(
-            icon: Badge.count(
-                count: unread,
-                isLabelVisible: unread > 0,
-                child: const Icon(Icons.person_outline)),
-            selectedIcon: Badge.count(
-                count: unread,
-                isLabelVisible: unread > 0,
-                child: const Icon(Icons.person)),
-            label: tr('Mon espace'),
-          ),
-        ],
+      tab: tab,
+      onTabChanged: (index) => setState(() => tab = index),
+      listingsDestination: NavigationDestination(
+        icon: const Icon(Icons.apartment_outlined),
+        selectedIcon: const Icon(Icons.apartment),
+        label: tr('Portefeuille'),
       ),
-      body: Column(
-        children: [
-          AppHeader(
-            title: onMySpace ? tr('Mon espace') : 'Immoizi Manager',
-            subtitle: onMySpace
-                ? tr('Outils et suivi de votre portefeuille')
-                : tr('Portefeuille bailleur'),
-            icon: onMySpace ? Icons.person : Icons.business,
-            connected: connected,
-            online: online,
-            connectedLabel: username.text.trim(),
-            loading: loading,
-            onRefresh: load,
-            refreshTooltip: tr('Charger le portefeuille'),
-            bottom: onMySpace
-                ? null
-                : PropertySearchBar(
-                    controller: propertySearch,
-                    onChanged: searchProperties,
-                    activeFilterCount: filters.activeCount,
-                    onOpenFilters: _showFilters,
-                    hintText: tr('Rechercher une annonce...'),
-                  ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: load,
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        CacheStatusBar(
-                            lastSynced: lastSynced, loading: loading),
-                        if (error != null) ...[
-                          const SizedBox(height: 12),
-                          ErrorCard(error!),
-                        ],
-                        if (!onMySpace && unread > 0) ...[
-                          const SizedBox(height: 12),
-                          UnreadNotificationsBanner(
-                            notifications: dashboard.notifications
-                                .where((item) => !item.isRead)
-                                .toList(),
-                            onTap: () {
-                              final first = dashboard.notifications
-                                  .firstWhere((item) => !item.isRead);
-                              openNotification(context, first,
-                                  request: _requestFor(first),
-                                  editContext: _editContext,
-                                  markRead: markNotificationRead);
-                            },
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        if (onMySpace)
-                          ..._mySpace()
-                        else
-                          ManagerDashboardView(
-                            dashboard,
-                            searchQuery: searchQuery,
-                            filters: filters,
-                            onRentalTypeChanged: (type) => _applyFilters(
-                                type == null
-                                    ? filters.copyWith(clearRentalType: true)
-                                    : filters.copyWith(rentalType: type)),
-                            editContext: _editContext,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+      unreadCount: unread.length,
+      header: (collapsed) => sessionHeader(
+        title: onMySpace ? tr('Mon espace') : 'Immoizi Manager',
+        subtitle: onMySpace
+            ? tr('Outils et suivi de votre portefeuille')
+            : tr('Portefeuille bailleur'),
+        icon: onMySpace ? Icons.person : Icons.business,
+        collapsed: collapsed,
+        refreshTooltip: tr('Charger le portefeuille'),
+        search: onMySpace
+            ? null
+            : listingSearchBar(dashboard.properties,
+                hintText: tr('Rechercher une annonce...'),
+                filterSubtitle: tr('Affinez les biens qui vous intéressent.')),
+      ),
+      onRefresh: load,
+      lastSynced: lastSynced,
+      loading: loading,
+      error: error,
+      children: onMySpace
+          ? _mySpace()
+          : [
+              if (unread.isNotEmpty) ...[
+                UnreadNotificationsBanner(
+                  notifications: unread,
+                  showInterestMessage: true,
+                  onTap: () => _openNotification(unread.first),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ManagerDashboardView(
+                dashboard,
+                searchQuery: searchQuery,
+                filters: filters,
+                onRentalTypeChanged: setRentalType,
+                editContext: _editContext,
               ),
-            ),
-          ),
-        ],
-      ),
+            ],
     );
   }
+
+  void _openNotification(NotificationItem notification) =>
+      openNotification(context, notification,
+          request: _requestFor(notification),
+          editContext: _editContext,
+          markRead: markNotificationRead);
 
   InterestRequestItem? _requestFor(NotificationItem notification) {
     for (final request in dashboard.interestRequests) {
@@ -240,9 +173,10 @@ class _ManagerHomePageState extends State<ManagerHomePage>
               dashboard.notifications.any((item) => !item.isRead),
           children: dashboard.notifications
               .map((item) => NotificationTile(item,
-                  editContext: _editContext,
-                  markRead: markNotificationRead,
-                  request: _requestFor(item)))
+                  showInterestMessage: true,
+                  onTap: () => _openNotification(item),
+                  onDelete: () => deleteNotification(context, item,
+                      editContext: _editContext)))
               .toList()),
       CategorySection(
           title: tr('Baux'),
@@ -273,23 +207,5 @@ class _ManagerHomePageState extends State<ManagerHomePage>
       const SizedBox(height: 4),
       const PreferencesCard(),
     ];
-  }
-
-  Future<void> _showFilters() async {
-    final result = await showModalBottomSheet<PropertyFilters>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => PropertyFilterSheet(
-        initial: filters,
-        categories: dashboard.properties
-            .map((property) => property.category)
-            .toSet()
-            .toList()
-          ..sort(),
-        subtitle: tr('Affinez les biens qui vous intéressent.'),
-      ),
-    );
-    if (result != null && mounted) _applyFilters(result);
   }
 }

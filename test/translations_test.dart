@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,34 +6,8 @@ import 'package:http/testing.dart';
 import 'package:immoizi_app_manager/main.dart';
 import 'package:immoizi_app_manager/src/i18n/manager_strings.dart';
 import 'package:immoizi_core/immoizi_core.dart';
+import 'package:immoizi_core/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-Set<String> trKeys(String dir) {
-  // Single- or double-quoted Dart literal; the text is group 1 or 2.
-  const literal = r"""(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)")""";
-  final direct = RegExp(r'(?<![\w.])tr\(\s*' + literal);
-  final ternary = RegExp(
-      r'(?<![\w.])tr\(\s*[^,()]*?\?\s*' + literal + r'\s*:\s*' + literal);
-  String decode(String s) => s
-      .replaceAllMapped(RegExp(r'\\u([0-9a-fA-F]{4})'),
-          (m) => String.fromCharCode(int.parse(m[1]!, radix: 16)))
-      .replaceAll(r"\'", "'")
-      .replaceAll(r'\$', r'$');
-  final keys = <String>{};
-  for (final file in Directory(dir).listSync(recursive: true)) {
-    if (file is! File || !file.path.endsWith('.dart')) continue;
-    final source = file.readAsStringSync();
-    for (final m in direct.allMatches(source)) {
-      keys.add(decode(m[1] ?? m[2]!));
-    }
-    for (final m in ternary.allMatches(source)) {
-      keys
-        ..add(decode(m[1] ?? m[2]!))
-        ..add(decode(m[3] ?? m[4]!));
-    }
-  }
-  return keys;
-}
 
 void main() {
   setUp(() {
@@ -49,9 +21,7 @@ void main() {
 
   test('every tr() string in the manager app has an English translation', () {
     AppStrings.register(managerEnglish);
-    final missing =
-        trKeys('lib').where((key) => !AppStrings.hasTranslation(key)).toList();
-    expect(missing, isEmpty);
+    expect(missingTranslations('lib'), isEmpty);
   });
 
   testWidgets('switching language and theme from Mon espace', (tester) async {

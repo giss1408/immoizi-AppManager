@@ -19,7 +19,7 @@ class ManagerDashboardView extends StatelessWidget {
   final String searchQuery;
   final PropertyFilters filters;
 
-  /// Quick "Toutes / Au mois / Courte durée" filter.
+  /// Quick "Toutes durées / Courte durée" filter.
   final ValueChanged<RentalType?>? onRentalTypeChanged;
 
   Future<void> _addProperty(BuildContext context) async {
