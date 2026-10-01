@@ -29,7 +29,81 @@ class ImmoiziManagerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Immoizi Manager',
       theme: AppTheme.theme(IvoryColors.orange, IvoryColors.background),
-      home: const ManagerHomePage(),
+      home: const _SplashScreen(),
+    );
+  }
+}
+
+class _SplashScreen extends StatefulWidget {
+  const _SplashScreen();
+
+  @override
+  State<_SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<_SplashScreen> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _fade;
+  Timer? _navigateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut).drive(
+      Tween<double>(begin: 0.7, end: 1.0),
+    );
+    _fade = CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeIn));
+    _controller.forward();
+    _navigateTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ManagerHomePage()),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _navigateTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: IvoryColors.background,
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) => Opacity(
+            opacity: _fade.value,
+            child: Transform.scale(scale: _scale.value, child: child),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Image.asset('assets/branding/splash_logo.png', width: 140, height: 140),
+              ),
+              const SizedBox(height: 20),
+              RichText(
+                text: const TextSpan(
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                  children: [
+                    TextSpan(text: 'immo', style: TextStyle(color: IvoryColors.green)),
+                    TextSpan(text: 'IZI', style: TextStyle(color: IvoryColors.orange, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
