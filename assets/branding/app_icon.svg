@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#00733A"/>
+
+  <!-- Roof: orange accent, the warm counterpoint to the green field -->
+  <path d="M512 228
+           Q528 228 540 240
+           L772 456
+           Q796 478 796 510
+           L796 540
+           L228 540
+           L228 510
+           Q228 478 252 456
+           L484 240
+           Q496 228 512 228 Z"
+        fill="#FF8200"/>
+
+  <!-- House body -->
+  <rect x="286" y="526" width="452" height="310" rx="34" fill="#FFFFFF"/>
+
+  <!-- Door, cut to the green background, topped with a keyhole -->
+  <path d="M452 836
+           L452 672
+           Q452 624 512 624
+           Q572 624 572 672
+           L572 836 Z"
+        fill="#00733A"/>
+  <circle cx="512" cy="672" r="20" fill="#00733A"/>
+  <path d="M497 686 L527 686 L519 724 L505 724 Z" fill="#00733A"/>
+
+  <!-- Windows -->
+  <rect x="330" y="588" width="68" height="68" rx="12" fill="#00733A"/>
+  <rect x="626" y="588" width="68" height="68" rx="12" fill="#00733A"/>
+</svg>
